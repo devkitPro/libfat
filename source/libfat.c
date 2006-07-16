@@ -35,6 +35,10 @@
 #include "partition.h"
 #include "fatfile.h"
 
+#define GBA_DEFAULT_CACHE_PAGES 2
+#define NDS_DEFAULT_CACHE_PAGES 8
+
+
 const devoptab_t dotab_fat = {
 	"fat",
 	sizeof (FILE_STRUCT),
@@ -87,6 +91,14 @@ bool fatInit (u32 cacheSize, bool setAsDefaultDevice) {
 	}
 	
 	return true;
+}
+
+bool fatInitDefault (void) {
+#ifdef NDS
+	return fatInit (NDS_DEFAULT_CACHE_PAGES, true);
+#else
+	return fatInit (GBA_DEFAULT_CACHE_PAGES, true);
+#endif
 }
 
 bool fatMountNormalInterface (PARTITION_INTERFACE partitionNumber, u32 cacheSize) {

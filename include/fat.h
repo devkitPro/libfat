@@ -27,6 +27,12 @@
 
 	2006-07-11 - Chishm
 		* Original release
+		
+	2006-07-14
+		* fatInitialise renamed to fatInit
+		
+	2006-07-16 - Chishm
+		* Added fatInitDefault
 */
 
 
@@ -65,6 +71,11 @@ cacheSize: The number of pages to allocate for each inserted block-device
 setAsDefaultDevice: if true, make this the default device driver for file operations
 */
 bool fatInit (u32 cacheSize, bool setAsDefaultDevice);
+
+/*
+Calls fatInit with setAsDefaultDevice = true and cacheSize optimised for the host system.
+*/
+bool fatInitDefault (void);
 
 /*
 Mount the device specified by partitionNumber
