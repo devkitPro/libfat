@@ -195,7 +195,7 @@ bool _EFA2_readSectors (u32 sector, u32 numSecs, void* buffer)
 {
 	int  i;
 
-#ifndef _CF_ALLOW_UNALIGNED
+#ifndef _IO_ALLOW_UNALIGNED
 	u8  byte;
 	u16  word;
 #endif
@@ -234,7 +234,7 @@ bool _EFA2_readSectors (u32 sector, u32 numSecs, void* buffer)
 	while (numSecs--)
 	{
 		// read page data
-#ifdef _CF_ALLOW_UNALIGNED
+#ifdef _IO_ALLOW_UNALIGNED
 		// slow byte access to RAM, but works in principle
 		for (i=0 ; i < 512 ; i++)
 			((u8*)buffer)[i] = REG_EFA2_NAND_RD;

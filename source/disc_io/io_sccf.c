@@ -36,52 +36,48 @@
 
 #include "io_sccf.h"
 #include "io_sc_common.h"
+#include "io_cf_common.h"
 
-/*-----------------------------------------------------------------
-Since all CF addresses and commands are the same for the GBAMP,
-simply use it's functions instead.
------------------------------------------------------------------*/
+//---------------------------------------------------------------
+// SC CF Addresses
+#define REG_SCCF_STS		((vu16*)0x098C0000)	// Status of the CF Card / Device control
+#define REG_SCCF_CMD		((vu16*)0x090E0000)	// Commands sent to control chip and status return
+#define REG_SCCF_ERR		((vu16*)0x09020000)	// Errors / Features
 
-extern bool _MPCF_isInserted (void);
-extern bool _MPCF_clearStatus (void);
-extern bool _MPCF_readSectors (u32 sector, u32 numSectors, void* buffer);
-extern bool _MPCF_writeSectors (u32 sector, u32 numSectors, void* buffer);
+#define REG_SCCF_SEC		((vu16*)0x09040000)	// Number of sector to transfer
+#define REG_SCCF_LBA1		((vu16*)0x09060000)	// 1st byte of sector address
+#define REG_SCCF_LBA2		((vu16*)0x09080000)	// 2nd byte of sector address
+#define REG_SCCF_LBA3		((vu16*)0x090A0000)	// 3rd byte of sector address
+#define REG_SCCF_LBA4		((vu16*)0x090C0000)	// last nibble of sector address | 0xE0
+
+#define REG_SCCF_DATA		((vu16*)0x09000000)	// Pointer to buffer of CF data transered from card
+
+static const CF_REGISTERS _SCCF_Registers = {
+	REG_SCCF_DATA,
+	REG_SCCF_STS,
+	REG_SCCF_CMD,
+	REG_SCCF_ERR,
+	REG_SCCF_SEC,
+	REG_SCCF_LBA1,
+	REG_SCCF_LBA2,
+	REG_SCCF_LBA3,
+	REG_SCCF_LBA4
+};
 
 
-/*-----------------------------------------------------------------
-_SCCF_unlock
-Returns true if SuperCard was unlocked, false if failed
-Added by MightyMax
-Modified by Chishm
------------------------------------------------------------------*/
-bool _SCCF_unlock(void) {
-#define CF_REG_LBA1 (*(vu16*)0x09060000)
-	unsigned char temp;
+bool _SCCF_startup(void) {
 	_SC_changeMode (SC_MODE_MEDIA);	
-	// provoke a ready reply
-	temp = CF_REG_LBA1;
-	CF_REG_LBA1 = (~temp & 0xFF);
-	temp = (~temp & 0xFF);
-	return (CF_REG_LBA1 == temp);
-#undef CF_REG_LBA1
-} 
-
-bool _SCCF_shutdown(void) {
-	return _MPCF_clearStatus() ;
-} ;
-
-bool _SCCF_startUp(void) {
-	return _SCCF_unlock() ;
-} ;
+	return _CF_startup(&_SCCF_Registers);
+}
 
 
 IO_INTERFACE _io_sccf = {
 	DEVICE_TYPE_SCCF,
 	FEATURE_MEDIUM_CANREAD | FEATURE_MEDIUM_CANWRITE | FEATURE_SLOT_GBA,
-	(FN_MEDIUM_STARTUP)&_SCCF_startUp,
-	(FN_MEDIUM_ISINSERTED)&_MPCF_isInserted,
-	(FN_MEDIUM_READSECTORS)&_MPCF_readSectors,
-	(FN_MEDIUM_WRITESECTORS)&_MPCF_writeSectors,
-	(FN_MEDIUM_CLEARSTATUS)&_MPCF_clearStatus,
-	(FN_MEDIUM_SHUTDOWN)&_SCCF_shutdown
+	(FN_MEDIUM_STARTUP)&_SCCF_startup,
+	(FN_MEDIUM_ISINSERTED)&_CF_isInserted,
+	(FN_MEDIUM_READSECTORS)&_CF_readSectors,
+	(FN_MEDIUM_WRITESECTORS)&_CF_writeSectors,
+	(FN_MEDIUM_CLEARSTATUS)&_CF_clearStatus,
+	(FN_MEDIUM_SHUTDOWN)&_CF_shutdown
 } ;

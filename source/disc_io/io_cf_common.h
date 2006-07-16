@@ -30,12 +30,28 @@
 
 	2006-07-11 - Chishm
 		* Original release
+		
+	2006-07-16 - Chishm
+		* Combined all CF interfaces into one common set of routines
 */
 
 #ifndef IO_CF_COMMON_H
 #define IO_CF_COMMON_H
 
 #include "disc_io.h"
+
+typedef struct {
+	vu16* data;
+	vu16* status;
+	vu16* command;
+	vu16* error;
+	vu16* sectorCount;
+	vu16* lba1;
+	vu16* lba2;
+	vu16* lba3;
+	vu16* lba4;
+} CF_REGISTERS;
+
 
 // CF Card status
 #define CF_STS_INSERTED		0x50
@@ -51,5 +67,12 @@
 #define CF_CMD_WRITE		0x30
 
 #define CF_CARD_TIMEOUT	10000000
+
+bool _CF_isInserted (void);
+bool _CF_clearStatus (void);
+bool _CF_readSectors (u32 sector, u32 numSectors, void* buffer);
+bool _CF_writeSectors (u32 sector, u32 numSectors, void* buffer);
+bool _CF_shutdown(void);
+bool _CF_startup(const CF_REGISTERS *usableCfRegs);
 
 #endif // define IO_CF_COMMON_H

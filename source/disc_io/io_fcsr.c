@@ -41,7 +41,7 @@
 
 //---------------------------------------------------------------
 // DMA
-#ifdef _CF_USE_DMA
+#ifdef _IO_USE_DMA
  #ifndef NDS
   #include "gba_dma.h"
  #else
@@ -155,7 +155,7 @@ bool _FCSR_readSectors (u32 sector, u32 numSectors, void* buffer)
 		}
 	} else {	// Reading from Cart ROM
 
-#ifdef _CF_USE_DMA
+#ifdef _IO_USE_DMA
  #ifdef NDS
   #ifdef ARM9
 		DC_FlushRange( buffer, readLength);
@@ -166,9 +166,9 @@ bool _FCSR_readSectors (u32 sector, u32 numSectors, void* buffer)
  #else	// ! NDS
 		DMA3COPY ( src, buffer, (readLength >> 1) | DMA16 | DMA_ENABLE);
  #endif	// NDS
-#else	// !_CF_USE_DMA
+#else	// !_IO_USE_DMA
 		memcpy (buffer, src, readLength);
-#endif	// _CF_USE_DMA
+#endif	// _IO_USE_DMA
 
 	}	// if (flagSramSector)
 

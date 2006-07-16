@@ -27,6 +27,10 @@
 
 	2006-07-11 - Chishm
 		* Original release
+		
+	2006-07-16 - Chishm
+		* Renamed _CF_USE_DMA to _IO_USE_DMA
+		* Renamed _CF_ALLOW_UNALIGNED to _IO_ALLOW_UNALIGNED
 */
 
 #ifndef _DISC_IO_H
@@ -38,14 +42,14 @@
 // Customisable features
 
 // Use DMA to read the card, remove this line to use normal reads/writes
-// #define _CF_USE_DMA
+// #define _IO_USE_DMA
 
 // Allow buffers not alligned to 16 bits when reading files. 
 // Note that this will slow down access speed, so only use if you have to.
 // It is also incompatible with DMA
-#define _CF_ALLOW_UNALIGNED
+#define _IO_ALLOW_UNALIGNED
 
-#if defined _CF_USE_DMA && defined _CF_ALLOW_UNALIGNED
+#if defined _IO_USE_DMA && defined _IO_ALLOW_UNALIGNED
  #error You can't use both DMA and unaligned memory
 #endif
 
