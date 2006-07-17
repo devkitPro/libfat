@@ -29,6 +29,10 @@
 
 	2006-07-11 - Chishm
 		* Original release
+		
+	2006-07-17 - Chishm
+		* Made all path inputs const char*
+		* Added _FAT_rename_r
 */
 
 
@@ -78,11 +82,12 @@ extern int _FAT_fstat_r (struct _reent *r, int fd, struct stat *st);
 
 extern int _FAT_stat_r (struct _reent *r, const char *path, struct stat *st);
 
-extern int _FAT_link_r (struct _reent *r, char *existing, char  *newLink);
+extern int _FAT_link_r (struct _reent *r, const char *existing, const char *newLink);
 
-extern int _FAT_unlink_r (struct _reent *r, char *name);
+extern int _FAT_unlink_r (struct _reent *r, const char *name);
 
-extern int _FAT_chdir_r (struct _reent *r, char *name);
+extern int _FAT_chdir_r (struct _reent *r, const char *name);
 
+extern int _FAT_rename_r (struct _reent *r, const char *oldName, const char *newName);
 
 #endif // _FATFILE_H

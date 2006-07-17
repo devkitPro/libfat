@@ -29,6 +29,10 @@
 
 	2006-07-11 - Chishm
 		* Original release
+		
+	2006-07-17 - Chishm
+		* Made all path inputs const char*
+		* Added _FAT_rename_r
 */
 
 
@@ -806,7 +810,7 @@ int _FAT_fstat_r (struct _reent *r, int fd, struct stat *st) {
 	return 0;
 }
 	
-int _FAT_stat_r (struct _reent *r,const char *path, struct stat *st) {
+int _FAT_stat_r (struct _reent *r, const char *path, struct stat *st) {
 	PARTITION* partition = NULL;
 	
 	DIR_ENTRY dirEntry;
@@ -840,12 +844,12 @@ int _FAT_stat_r (struct _reent *r,const char *path, struct stat *st) {
 	return 0;
 }
 
-int _FAT_link_r (struct _reent *r, char *existing, char *newLink) {
+int _FAT_link_r (struct _reent *r, const char *existing, const char *newLink) {
 	r->_errno = ENOTSUP;
 	return -1;
 }
 
-int _FAT_unlink_r (struct _reent *r, char *path) {
+int _FAT_unlink_r (struct _reent *r, const char *path) {
 	PARTITION* partition = NULL;
 	DIR_ENTRY dirEntry;
 	DIR_ENTRY dirContents;
@@ -926,7 +930,7 @@ int _FAT_unlink_r (struct _reent *r, char *path) {
 	}
 }
 
-int _FAT_chdir_r (struct _reent *r, char *path) {
+int _FAT_chdir_r (struct _reent *r, const char *path) {
 	PARTITION* partition = NULL;
 	
 	// Get the partition this directory is on
@@ -962,3 +966,106 @@ int _FAT_chdir_r (struct _reent *r, char *path) {
 		return -1;
 	}
 }
+
+int _FAT_rename_r (struct _reent *r, const char *oldName, const char *newName) {
+	PARTITION* partition = NULL;
+	DIR_ENTRY oldDirEntry;
+	DIR_ENTRY newDirEntry;
+	const char *pathEnd;
+	u32 dirCluster;
+	
+	// Get the partition this directory is on
+	partition = _FAT_partition_getPartitionFromPath (oldName);
+	
+	if (partition == NULL) {
+		r->_errno = ENODEV;
+		return -1;
+	}
+	
+	// Make sure the same partition is used for the old and new names
+	if (partition != _FAT_partition_getPartitionFromPath (newName)) {
+		r->_errno = EXDEV;
+		return -1;
+	}
+
+	// Make sure we aren't trying to write to a read-only disc
+	if (partition->readOnly) {
+		r->_errno = EROFS;
+		return -1;
+	}	
+
+	// Move the path pointer to the start of the actual path
+	if (strchr (oldName, ':') != NULL) {
+		oldName = strchr (oldName, ':') + 1;
+	}
+	if (strchr (oldName, ':') != NULL) {
+		r->_errno = EINVAL;
+		return -1;
+	}
+	if (strchr (newName, ':') != NULL) {
+		newName = strchr (newName, ':') + 1;
+	}
+	if (strchr (newName, ':') != NULL) {
+		r->_errno = EINVAL;
+		return -1;
+	}
+
+	// Search for the file on the disc
+	if (!_FAT_directory_entryFromPath (partition, &oldDirEntry, oldName, NULL)) {
+		r->_errno = ENOENT;
+		return -1;
+	}
+	
+	// Make sure there is no existing file / directory with the new name
+	if (_FAT_directory_entryFromPath (partition, &newDirEntry, newName, NULL)) {
+		r->_errno = EEXIST;
+		return -1;
+	}
+
+	// Create the new file entry
+	// Get the directory it has to go in 
+	pathEnd = strrchr (newName, DIR_SEPARATOR);
+	if (pathEnd == NULL) {
+		// No path was specified
+		dirCluster = partition->cwdCluster;
+		pathEnd = newName;
+	} else {
+		// Path was specified -- get the right dirCluster
+		// Recycling newDirEntry, since it needs to be recreated anyway
+		if (!_FAT_directory_entryFromPath (partition, &newDirEntry, newName, pathEnd) ||
+			!_FAT_directory_isDirectory(&newDirEntry)) {
+			r->_errno = ENOTDIR;
+			return -1;
+		}
+		dirCluster = _FAT_directory_entryGetCluster (newDirEntry.entryData);
+		// Move the pathEnd past the last DIR_SEPARATOR
+		pathEnd += 1;
+	}
+
+	// Copy the entry data
+	memcpy (&newDirEntry, &oldDirEntry, sizeof(DIR_ENTRY));
+	
+	// Set the new name
+	strncpy (newDirEntry.filename, pathEnd, MAX_FILENAME_LENGTH - 1);
+	
+	// Write the new entry
+	if (!_FAT_directory_addEntry (partition, &newDirEntry, dirCluster)) {
+		r->_errno = ENOSPC;
+		return -1;
+	}
+	
+	// Remove the old entry
+	if (!_FAT_directory_removeEntry (partition, &oldDirEntry)) {
+		r->_errno = EIO;
+		return -1;
+	}
+	
+	// Flush any sectors in the disc cache
+	if (!_FAT_cache_flush (partition->cache)) {
+		r->_errno = EIO;
+		return -1;
+	}
+
+	return 0;
+}
+
