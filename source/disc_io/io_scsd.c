@@ -29,6 +29,9 @@
  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
  EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ 
+	2006-07-22 - Chishm
+		* First release of stable code
 */
 
 #include "io_scsd.h"
@@ -58,15 +61,18 @@
 // Send / receive timeouts, to stop infinite wait loops
 #define MAX_STARTUP_TRIES 100	// Arbitrary value, check if the card is ready 100 times before giving up
 #define NUM_STARTUP_CLOCKS 100	// Number of empty (0xFF when sending) bytes to send/receive to/from the card
-#define TRANSMIT_TIMEOUT 0x100	// Time to wait for the M3 to respond to transmit or receive requests
+#define TRANSMIT_TIMEOUT 10000	// Time to wait for the SC to respond to transmit or receive requests
 #define RESPONSE_TIMEOUT 256	// Number of clocks sent to the SD card before giving up
 #define BUSY_WAIT_TIMEOUT 500000
+#define WRITE_TIMEOUT	10000	// Time to wait for the card to finish writing
 //---------------------------------------------------------------
 // Variables required for tracking SD state
-static u32 relativeCardAddress = 0;	// Preshifted Relative Card Address
+static u32 _SCSD_relativeCardAddress = 0;	// Preshifted Relative Card Address
 
 //---------------------------------------------------------------
-// Internal M3 SD functions
+// Internal SC SD functions
+
+extern bool _SCSD_writeData_s (u8 *data, u16* crc);
 
 static inline void _SCSD_unlock (void) {
 	_SC_changeMode (SC_MODE_MEDIA);	
@@ -97,80 +103,56 @@ static bool _SCSD_sendCommand (u8 command, u32 argument) {
 
 	tempDataPtr = databuff;
 	
-	do {
+	while (length--) {
 		dataByte = *tempDataPtr++;
 		for (curBit = 7; curBit >=0; curBit--){
 			REG_SCSD_CMD = dataByte;
 			dataByte = dataByte << 1;
 		}
-	} while (length--);
-	
-	return true;
-}
-
-static u8 _SCSD_getByte (void) {
-	// With every 16 bit read to REG_SCSD_CMD, read a single bit.
-	u32 res = 0;
-	int i;
-	
-	for (i = 1; i < 8; i++) {
-		res = (res << 1) | REG_SCSD_CMD;
 	}
 	
-	return (u8)res;
+	return true;
 }
 
 // Returns the response from the SD card to a previous command.
 static bool _SCSD_getResponse (u8* dest, u32 length) {
 	u32 i;	
-	u8 dataByte;
-	int shiftAmount;
+	int dataByte;
+	int numBits = length * 8;
 	
 	// Wait for the card to be non-busy
-	for (i = 0; i < RESPONSE_TIMEOUT; i++) {
-		dataByte = _SCSD_getByte();
-		if (dataByte != SD_CARD_BUSY) {
-			break;
-		}
-	}
-	
+	i = BUSY_WAIT_TIMEOUT;
+	while (((REG_SCSD_CMD & 0x01) != 0) && (--i));
 	if (dest == NULL) {
 		return true;
 	}
 	
-	// Still busy after the timeout has passed
-	if (dataByte == 0xff) {
+	if (i == 0) {
+		// Still busy after the timeout has passed
 		return false;
 	}
-
-	// Read response into buffer
-	for ( i = 0; i < length; i++) {
-		dest[i] = dataByte;
-		dataByte = _SCSD_getByte();
-	}
-	// dataByte will contain the last piece of the response
-
-	// Send 16 more clocks, 8 more than the delay required between a response and the next command
-	i = _SCSD_getByte();
-	i = _SCSD_getByte();
 	
-	// Shift response so that the bytes are correctly aligned
-	// The register may not contain properly aligned data
-	for (shiftAmount = 0; ((dest[0] << shiftAmount) & 0x80) != 0x00; shiftAmount++) {
-		if (shiftAmount >= 7) {
-			return false;
+	// The first bit is always 0
+	dataByte = 0;	
+	numBits--;
+	// Read the remaining bits in the response.
+	// It's always most significant bit first
+	while (numBits--) {
+		dataByte = (dataByte << 1) | (REG_SCSD_CMD & 0x01);
+		if ((numBits & 0x7) == 0) {
+			// It's read a whole byte, so store it
+			*dest++ = (u8)dataByte;
+			dataByte = 0;
 		}
 	}
-	
-	for (i = 0; i < length - 1; i++) {
-		dest[i] = (dest[i] << shiftAmount) | (dest[i+1] >> (8-shiftAmount));
-	}
-	// Get the last piece of the response from dataByte
-	dest[i] = (dest[i] << shiftAmount) | (dataByte >> (8-shiftAmount));
 
+	// Send 16 more clocks, 8 more than the delay required between a response and the next command
+	for (i = 0; i < 16; i++) {
+		dataByte = REG_SCSD_CMD;
+	}
+	
 	return true;
 }
-
 
 static inline bool _SCSD_getResponse_R1 (u8* dest) {
 	return _SCSD_getResponse (dest, 6);
@@ -200,23 +182,21 @@ static void _SCSD_sendClocks (u32 numClocks) {
 }
 
 static bool _SCSD_initCard (void) {
-//iprintf ("init card\n");
 	int i;
-	u8 responseBuffer[17];		// sizeof 17 to hold the maximum response size possible
+	u8 responseBuffer[17] = {0};		// sizeof 17 to hold the maximum response size possible
 	
 	// Give the card time to stabilise
 	_SCSD_sendClocks (NUM_STARTUP_CLOCKS);
 	
 	// Reset the card
 	if (!_SCSD_sendCommand (GO_IDLE_STATE, 0)) {
-//iprintf ("can't idle\n");
 		return false;
 	}
 
 	_SCSD_sendClocks (NUM_STARTUP_CLOCKS);
 	
 	// Card is now reset, including it's address
-	relativeCardAddress = 0;
+	_SCSD_relativeCardAddress = 0;
 
 	for (i = 0; i < MAX_STARTUP_TRIES ; i++) {
 		_SCSD_sendCommand (APP_CMD, 0);
@@ -230,10 +210,9 @@ static bool _SCSD_initCard (void) {
 	}
 	
 	if (i >= MAX_STARTUP_TRIES) {
-//iprintf ("timeout on OP_COND\n");
 		return false;
 	}
-	
+
 	// The card's name, as assigned by the manufacturer
 	_SCSD_sendCommand (ALL_SEND_CID, 0);
 	_SCSD_getResponse_R2 (responseBuffer);
@@ -241,19 +220,18 @@ static bool _SCSD_initCard (void) {
 	// Get a new address
 	_SCSD_sendCommand (SEND_RELATIVE_ADDR, 0);
 	_SCSD_getResponse_R6 (responseBuffer);
-	relativeCardAddress = (responseBuffer[1] << 24) | (responseBuffer[2] << 16);
-//iprintf ("Relative Address: %08X\n", relativeCardAddress);
+	_SCSD_relativeCardAddress = (responseBuffer[1] << 24) | (responseBuffer[2] << 16);
 	
 	// Some cards won't go to higher speeds unless they think you checked their capabilities
-	_SCSD_sendCommand (SEND_CSD, relativeCardAddress);
+	_SCSD_sendCommand (SEND_CSD, _SCSD_relativeCardAddress);
 	_SCSD_getResponse_R2 (responseBuffer);
 	
 	// Only this card should respond to all future commands
-	_SCSD_sendCommand (SELECT_CARD, relativeCardAddress);
+	_SCSD_sendCommand (SELECT_CARD, _SCSD_relativeCardAddress);
 	_SCSD_getResponse_R1 (responseBuffer);
 	
 	// Set a 4 bit data bus
-	_SCSD_sendCommand (APP_CMD, relativeCardAddress);
+	_SCSD_sendCommand (APP_CMD, _SCSD_relativeCardAddress);
 	_SCSD_getResponse_R1 (responseBuffer);
 	
 	_SCSD_sendCommand (SET_BUS_WIDTH, 2);
@@ -267,11 +245,10 @@ static bool _SCSD_initCard (void) {
 	i = 0;
 	do {
 		if (i >= RESPONSE_TIMEOUT) {
-//iprintf ("timeout on SEND_STATUS\n");
 			return false;
 		}
 		i++;
-		_SCSD_sendCommand (SEND_STATUS, relativeCardAddress);
+		_SCSD_sendCommand (SEND_STATUS, _SCSD_relativeCardAddress);
 	} while ((!_SCSD_getResponse_R1 (responseBuffer)) && ((responseBuffer[3] & 0x1f) != ((SD_STATE_TRAN << 1) | READY_FOR_DATA)));
 	
 	return true;
@@ -280,7 +257,7 @@ static bool _SCSD_initCard (void) {
 static bool _SCSD_readData (void* buffer) {
 	u8* buff_u8 = (u8*)buffer;
 	u16* buff = (u16*)buffer;
-	u32 temp;
+	volatile register u32 temp;
 	int i;
 	
 	i = BUSY_WAIT_TIMEOUT;
@@ -291,18 +268,18 @@ static bool _SCSD_readData (void* buffer) {
 
 	i=256;
 	if ((u32)buff_u8 & 0x01) {
-		while(i--)
-		{
+		while(i--) {
 			temp = REG_SCSD_DATAREAD_32;
 			temp = REG_SCSD_DATAREAD_32 >> 16;
 			*buff_u8++ = (u8)temp;
 			*buff_u8++ = (u8)(temp >> 8);
 		}
 	} else {
-		while(i--)
+		while(i--) {
 			temp = REG_SCSD_DATAREAD_32;
 			temp = REG_SCSD_DATAREAD_32 >> 16;
-			*buff++ = (u16)temp; 
+			*buff++ = temp; 
+		}
 	}
 
 	
@@ -312,52 +289,6 @@ static bool _SCSD_readData (void* buffer) {
 	
 	temp = REG_SCSD_DATAREAD;
 	
-	return true;
-}
-
-static bool _SCSD_writeData (u8* data, u8* crc) {
-	int pos;
-	u16 dataHWord;
-	u16 temp;
-	
-	while ((REG_SCSD_DATAREAD & SCSD_STS_BUSY) == 0);
-		
-	temp = REG_SCSD_DATAREAD;
-	
-	REG_SCSD_DATAWRITE = 0;		// start bit;
-		
-	pos = BYTES_PER_READ / 2;
-	while (pos--) {
-		dataHWord = data[0] | (data[1] << 8);
-		data+=2;
-		
-		REG_SCSD_DATAWRITE = dataHWord;
-		REG_SCSD_DATAWRITE = dataHWord << 4;
-		REG_SCSD_DATAWRITE = dataHWord << 8;
-		REG_SCSD_DATAWRITE = dataHWord << 12;
-	}
-	
-	if (crc != 0) {
-		pos = 4;
-		while (pos--) {
-			dataHWord = *crc++;
-			
-			REG_SCSD_DATAWRITE = dataHWord;
-			REG_SCSD_DATAWRITE = dataHWord << 4;
-			REG_SCSD_DATAWRITE = dataHWord << 8;
-			REG_SCSD_DATAWRITE = dataHWord << 12;
-		}
-	}
-	
-	REG_SCSD_DATAWRITE = 0xff;		// end bit
-	
-	while ((REG_SCSD_DATAREAD & SCSD_STS_BUSY) == 0);
-
-	temp = REG_SCSD_DATAREAD;
-	temp = REG_SCSD_DATAREAD;
-	temp = REG_SCSD_DATAREAD;
-	temp = REG_SCSD_DATAREAD;
-
 	return true;
 }
 
@@ -423,34 +354,47 @@ bool _SCSD_readSectors (u32 sector, u32 numSectors, void* buffer) {
 }
 
 bool _SCSD_writeSectors (u32 sector, u32 numSectors, const void* buffer) {
-	u16 crcBuff[4];
-	u8* crc = (u8*)crcBuff;	// Force crcBuff to be halfword aligned
+	u16 crc[4];	// One per data line
 	u8 responseBuffer[6];
 	u32 offset = sector * BYTES_PER_READ;
 	u8* data = (u8*) buffer;
+	int i;
 
 	while (numSectors--) {
+		// Calculate the CRC16
+		_SD_CRC16 ( data, BYTES_PER_READ, (u8*)crc);
+		
 		// Send write command and get a response
 		_SCSD_sendCommand (WRITE_BLOCK, offset);
 		if (!_SCSD_getResponse_R1 (responseBuffer)) {
 			return false;
 		}
-	
+
 		// Send the data and CRC
-		_SD_CRC16 ( data, BYTES_PER_READ, crc);
-		if (! _SCSD_writeData( data, crc)) {
+		if (! _SCSD_writeData_s (data, crc)) {
 			return false;
 		}
-
+			
 		// Send a few clocks to the SD card
 		_SCSD_sendClocks(0x10);
 		
 		offset += BYTES_PER_READ;
 		data += BYTES_PER_READ;
+		
+		// Wait until card is finished programming
+		i = WRITE_TIMEOUT;
+		responseBuffer[3] = 0;
+		do {
+			_SCSD_sendCommand (SEND_STATUS, _SCSD_relativeCardAddress);
+			_SCSD_getResponse_R1 (responseBuffer);
+			i--;
+			if (i <= 0) {
+				return false;
+			}
+		} while (((responseBuffer[3] & 0x1f) != ((SD_STATE_TRAN << 1) | READY_FOR_DATA)));
 	}
 	
 	return true;
-
 }
 
 bool _SCSD_clearStatus (void) {

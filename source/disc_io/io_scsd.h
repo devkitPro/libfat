@@ -29,6 +29,9 @@
 
 	2006-07-11 - Chishm
 		* Original release
+
+	2006-07-22 - Chishm
+		* First release of stable code
 */
 
 #ifndef IO_SCSD_H

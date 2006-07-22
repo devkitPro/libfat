@@ -62,7 +62,7 @@
 #define REG_MMCF_LBA3		((vu16*)0x080A0000)	// 3rd byte of sector address
 #define REG_MMCF_LBA4		((vu16*)0x080C0000)	// last nibble of sector address | 0xE0
 
-#define REG_MMCF_DATA		((vu16*)0x09000000)		// Pointer to buffer of CF data transered from card
+#define REG_MMCF_DATA		((vu16*)0x08000000)		// Pointer to buffer of CF data transered from card
 
 static const CF_REGISTERS _MMCF_Registers = {
 	REG_MMCF_DATA,

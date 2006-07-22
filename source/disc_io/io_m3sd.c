@@ -47,14 +47,14 @@
 
 //---------------------------------------------------------------
 // Send / receive timeouts, to stop infinite wait loops
-#define MAX_STARTUP_TRIES 100	// Arbitrary value, check if the card is ready 100 times before giving up
+#define MAX_STARTUP_TRIES 10	// Arbitrary value, check if the card is ready 10 times before giving up
 #define NUM_STARTUP_CLOCKS 100	// Number of empty (0xFF when sending) bytes to send/receive to/from the card
-#define TRANSMIT_TIMEOUT 0x100	// Time to wait for the M3 to respond to transmit or receive requests
+#define TRANSMIT_TIMEOUT 2000	// Time to wait for the M3 to respond to transmit or receive requests
 #define RESPONSE_TIMEOUT 256	// Number of clocks sent to the SD card before giving up
 
 //---------------------------------------------------------------
 // Variables required for tracking SD state
-static u32 relativeCardAddress = 0;	// Preshifted Relative Card Address
+static u32 _M3SD_relativeCardAddress = 0;	// Preshifted Relative Card Address
 
 //---------------------------------------------------------------
 // Internal M3 SD functions
@@ -239,9 +239,9 @@ static bool _M3SD_initCard (void) {
 	}
 
 	_M3SD_getClocks (NUM_STARTUP_CLOCKS);
-	
+
 	// Card is now reset, including it's address
-	relativeCardAddress = 0;
+	_M3SD_relativeCardAddress = 0;
 
 	for (i = 0; i < MAX_STARTUP_TRIES ; i++) {
 		_M3SD_sendCommand (APP_CMD, 0);
@@ -265,18 +265,18 @@ static bool _M3SD_initCard (void) {
 	// Get a new address
 	_M3SD_sendCommand (SEND_RELATIVE_ADDR, 0);
 	_M3SD_getResponse_R6 (responseBuffer);
-	relativeCardAddress = (responseBuffer[1] << 24) | (responseBuffer[2] << 16);
+	_M3SD_relativeCardAddress = (responseBuffer[1] << 24) | (responseBuffer[2] << 16);
 	
 	// Some cards won't go to higher speeds unless they think you checked their capabilities
-	_M3SD_sendCommand (SEND_CSD, relativeCardAddress);
+	_M3SD_sendCommand (SEND_CSD, _M3SD_relativeCardAddress);
 	_M3SD_getResponse_R2 (responseBuffer);
 	
 	// Only this card should respond to all future commands
-	_M3SD_sendCommand (SELECT_CARD, relativeCardAddress);
+	_M3SD_sendCommand (SELECT_CARD, _M3SD_relativeCardAddress);
 	_M3SD_getResponse_R1 (responseBuffer);
 	
 	// Set a 4 bit data bus
-	_M3SD_sendCommand (APP_CMD, relativeCardAddress);
+	_M3SD_sendCommand (APP_CMD, _M3SD_relativeCardAddress);
 	_M3SD_getResponse_R1 (responseBuffer);
 	
 	_M3SD_sendCommand (SET_BUS_WIDTH, 2);
@@ -293,9 +293,8 @@ static bool _M3SD_initCard (void) {
 			return false;
 		}
 		i++;
-		_M3SD_sendCommand (SEND_STATUS, relativeCardAddress);
+		_M3SD_sendCommand (SEND_STATUS, _M3SD_relativeCardAddress);
 	} while ((!_M3SD_getResponse_R1 (responseBuffer)) && ((responseBuffer[3] & 0x1f) != ((SD_STATE_TRAN << 1) | READY_FOR_DATA)));
-	
 	return true;
 }
 

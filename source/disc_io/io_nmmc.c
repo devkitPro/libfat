@@ -25,7 +25,7 @@
 
 #include <nds/card.h>
 
-int spi_freq = 3;
+int _NMMC_spi_freq = 3;
 
 #define MK2_CONFIG_ZIP_RAM_CLOSE		(1 << 5)
 #define MK2_CONFIG_GAME_FLASH_CLOSE		((1 << 4) | (1 << 0))
@@ -61,13 +61,13 @@ static inline void _Neo_CloseSPI ( void )
 }
 
 static inline void _Neo_MK2GameMode()	{
-	_Neo_OpenSPI(spi_freq);				// Enable DS Card's SPI port
+	_Neo_OpenSPI(_NMMC_spi_freq);				// Enable DS Card's SPI port
 	_Neo_SPI(0xF1);				// Switch to game mode
 	_Neo_CloseSPI();				// Disable DS Card's SPI port
 }
 
 static inline void _Neo_EnableEEPROM( bool enable )	{
-	_Neo_OpenSPI(spi_freq);
+	_Neo_OpenSPI(_NMMC_spi_freq);
 	if(enable)	_Neo_SPI(0x06);
 	else 		_Neo_SPI(0x0E);
 	_Neo_CloseSPI();
@@ -75,7 +75,7 @@ static inline void _Neo_EnableEEPROM( bool enable )	{
 
 static void _Neo_WriteMK2Config(u8 config) {
 	_Neo_EnableEEPROM(true);
-	_Neo_OpenSPI(spi_freq);
+	_Neo_OpenSPI(_NMMC_spi_freq);
 	_Neo_SPI(0xFA);					// Send mem conf write command
 	_Neo_SPI(0x01);					// Send high byte (0x01)
 	_Neo_SPI(config);				// Send low byte
@@ -87,7 +87,7 @@ static u8 _Neo_ReadMK2Config(void)
 {
 	u8 config;
 	_Neo_EnableEEPROM(true);
-	_Neo_OpenSPI(spi_freq);
+	_Neo_OpenSPI(_NMMC_spi_freq);
 	_Neo_SPI(0xf8);					// Send mem conf read command
 	_Neo_SPI(0x01);					// Send high byte
 	config = _Neo_SPI(0x00);			// Get low byte
@@ -118,7 +118,7 @@ static void _Neo_EnableMMC( bool enable )
 	} else {
 		_Neo_SelectMMC (1);
 		_Neo_SelectMMC (1);
-		_Neo_OpenSPI (spi_freq);
+		_Neo_OpenSPI (_NMMC_spi_freq);
 	}
 	return;
 }
@@ -246,7 +246,7 @@ bool _NMMC_startUp(void) {
 		_Neo_SPI(0xFF);
 	}
 	if ((transSpeed & 0xf0) >= 0x30) {
-		spi_freq = 0;
+		_NMMC_spi_freq = 0;
 	}
 	
 	_Neo_EnableMMC( false );

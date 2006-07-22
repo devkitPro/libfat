@@ -28,6 +28,9 @@
 
 	2006-07-11 - Chishm
 		* Original release
+		
+	2006-07-11 - Chishm
+		* Made several fixes related to free clusters, thanks to Loopy
 */
 
 
@@ -202,6 +205,7 @@ u32 _FAT_fat_linkFreeCluster(PARTITION* partition, u32 cluster) {
 	u32 firstFree;
 	u32 curLink;
 	u32 lastCluster;
+	bool loopedAroundFAT = false;
 
 	lastCluster =  partition->fat.lastCluster;
 
@@ -211,7 +215,7 @@ u32 _FAT_fat_linkFreeCluster(PARTITION* partition, u32 cluster) {
 
 	// Check if the cluster already has a link, and return it if so
 	curLink = _FAT_fat_nextCluster(partition, cluster);
-	if ((curLink >= CLUSTER_FIRST) && (curLink < lastCluster)) {
+	if ((curLink >= CLUSTER_FIRST) && (curLink <= lastCluster)) {
 		return curLink;	// Return the current link - don't allocate a new one
 	}
 	
@@ -223,13 +227,20 @@ u32 _FAT_fat_linkFreeCluster(PARTITION* partition, u32 cluster) {
 	}
 
 	// Search until a free cluster is found
-	while ((_FAT_fat_nextCluster(partition, firstFree) != CLUSTER_FREE) && (firstFree <= lastCluster)) {
+	while (_FAT_fat_nextCluster(partition, firstFree) != CLUSTER_FREE) {
 		firstFree++;
-	}
-	if (firstFree > lastCluster) {
-		// If couldn't get a free cluster then return, saying this fact
-		partition->fat.firstFree = firstFree;
-		return CLUSTER_FREE;
+		if (firstFree > lastCluster) {
+			if (loopedAroundFAT) {
+				// If couldn't get a free cluster then return, saying this fact
+				partition->fat.firstFree = firstFree;
+				return CLUSTER_FREE;
+			} else {
+				// Try looping back to the beginning of the FAT
+				// This was suggested by loopy
+				firstFree = CLUSTER_FIRST;
+				loopedAroundFAT = true;
+			}
+		}
 	}
 	partition->fat.firstFree = firstFree;
 
@@ -253,6 +264,11 @@ bool _FAT_fat_clearLinks (PARTITION* partition, u32 cluster) {
 	
 	if ((cluster < 0x0002) || (cluster > partition->fat.lastCluster))
 		return false;
+		
+	// If this clears up more space in the FAT before the current free pointer, move it backwards
+	if (cluster < partition->fat.firstFree) {
+		partition->fat.firstFree = cluster;
+	}
 
 	while ((cluster != CLUSTER_EOF) && (cluster != CLUSTER_FREE)) {
 		// Store next cluster before erasing the link

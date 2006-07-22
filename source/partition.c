@@ -112,7 +112,7 @@ static PARTITION* _FAT_partition_constructor ( IO_INTERFACE* disc, u32 cacheSize
 	PARTITION* partition;
 	int i;
 	u32 bootSector;
-	u8 sectorBuffer[BYTES_PER_READ];
+	u8 sectorBuffer[BYTES_PER_READ] = {0};
 
 	// Read first sector of disc
 	if ( !_FAT_disc_readSectors (disc, 0, 1, sectorBuffer)) {
@@ -156,7 +156,7 @@ static PARTITION* _FAT_partition_constructor ( IO_INTERFACE* disc, u32 cacheSize
 
 	partition = (PARTITION*) _FAT_mem_allocate (sizeof(PARTITION));
 	if (partition == NULL) {
-		return false;
+		return NULL;
 	}
 
 	// Set partition's disc interface

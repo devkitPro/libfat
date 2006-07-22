@@ -52,6 +52,7 @@
 #define READ_SINGLE_BLOCK 17
 #define READ_MULTIPLE_BLOCK 18
 #define WRITE_BLOCK 24
+#define WRITE_MULTIPLE_BLOCK 25
 #define APP_CMD 55
 
 /* SD App commands */

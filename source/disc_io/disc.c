@@ -84,12 +84,12 @@
 IO_INTERFACE* ioInterfaces[] = {
 #ifdef NDS
 	// Place Slot 1 (DS Card) interfaces here
-	&_io_nmmc, 
+	&_io_nmmc,
 #endif
 	// Place Slot 2 (GBA Cart) interfaces here
-	&_io_mpcf, &_io_m3cf, &_io_m3sd, &_io_sccf, &_io_fcsr
+	&_io_mpcf, &_io_m3cf, &_io_sccf, &_io_scsd, &_io_m3sd, &_io_fcsr
 	// Experimental Slot 2 interfaces
-	, &_io_mmcf, &_io_scsd, &_io_efa2
+	, &_io_mmcf, &_io_efa2
 };
 
 /*
