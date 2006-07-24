@@ -33,6 +33,9 @@
 	2006-07-17 - Chishm
 		* Made all path inputs const char*
 		* Added _FAT_rename_r
+		
+	2006-07-24 - Chishm
+		* Removed padding workaround from FILE_STRUCT
 */
 
 
@@ -53,7 +56,6 @@ typedef struct {
 } FILE_POSITION;
 
 typedef struct {
-	int pad;
 	u32 filesize;
 	u32 startCluster;
 	u32 currentPosition;
