@@ -40,6 +40,6 @@ distribute/$(DATESTRING): distribute
 distribute:
 	@[ -d $@ ] || mkdir -p $@
 
-install:
+install: dist
 	make -C nds install
 	make -C gba install
