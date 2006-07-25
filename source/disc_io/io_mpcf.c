@@ -88,7 +88,7 @@ bool _MPCF_startup(void) {
 /*-----------------------------------------------------------------
 the actual interface structure
 -----------------------------------------------------------------*/
-IO_INTERFACE _io_mpcf = {
+const IO_INTERFACE _io_mpcf = {
 	DEVICE_TYPE_MPCF,
 	FEATURE_MEDIUM_CANREAD | FEATURE_MEDIUM_CANWRITE | FEATURE_SLOT_GBA,
 	(FN_MEDIUM_STARTUP)&_MPCF_startup,

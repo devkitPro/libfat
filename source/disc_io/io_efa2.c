@@ -295,7 +295,7 @@ bool _EFA2_startUp(void)
 /*-----------------------------------------------------------------
 the actual interface structure
 -----------------------------------------------------------------*/
-IO_INTERFACE _io_efa2 = {
+const IO_INTERFACE _io_efa2 = {
 	DEVICE_TYPE_EFA2,
 	FEATURE_MEDIUM_CANREAD | FEATURE_SLOT_GBA,
 	(FN_MEDIUM_STARTUP)&_EFA2_startUp,

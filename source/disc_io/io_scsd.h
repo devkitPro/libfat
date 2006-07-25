@@ -43,6 +43,6 @@
 #include "disc_io.h"
 
 // export interface
-extern IO_INTERFACE _io_scsd ;
+extern const IO_INTERFACE _io_scsd ;
 
 #endif	// define IO_SCSD_H

@@ -334,7 +334,7 @@ bool _NMMC_readSectors (u32 sector, u32 totalSecs, void* buffer)
 }
 
 
-IO_INTERFACE _io_nmmc = {
+const IO_INTERFACE _io_nmmc = {
 	DEVICE_TYPE_NMMC,
 	FEATURE_MEDIUM_CANREAD | FEATURE_MEDIUM_CANWRITE | FEATURE_SLOT_NDS,
 	(FN_MEDIUM_STARTUP)&_NMMC_startUp,

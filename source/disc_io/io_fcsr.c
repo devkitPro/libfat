@@ -322,7 +322,7 @@ bool _FCSR_startUp(void)
 /*-----------------------------------------------------------------
 the actual interface structure
 -----------------------------------------------------------------*/
-IO_INTERFACE _io_fcsr = {
+const IO_INTERFACE _io_fcsr = {
 	DEVICE_TYPE_FCSR,	// 'FCSR'
 	FEATURE_MEDIUM_CANREAD | FEATURE_MEDIUM_CANWRITE | FEATURE_SLOT_GBA,
 	(FN_MEDIUM_STARTUP)&_FCSR_startUp,

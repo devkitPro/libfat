@@ -29,6 +29,12 @@
  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
  EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ 
+	2006-07-25 - Chishm
+		* Improved startup function that doesn't delay hundreds of seconds
+		  before reporting no card inserted.
+		* Fixed writeData function to timeout on error
+		* writeSectors function now wait until the card is ready before continuing with a transfer
 */
 
 #include "io_m3sd.h"
@@ -47,10 +53,11 @@
 
 //---------------------------------------------------------------
 // Send / receive timeouts, to stop infinite wait loops
-#define MAX_STARTUP_TRIES 10	// Arbitrary value, check if the card is ready 10 times before giving up
+#define MAX_STARTUP_TRIES 20	// Arbitrary value, check if the card is ready 20 times before giving up
 #define NUM_STARTUP_CLOCKS 100	// Number of empty (0xFF when sending) bytes to send/receive to/from the card
 #define TRANSMIT_TIMEOUT 2000	// Time to wait for the M3 to respond to transmit or receive requests
 #define RESPONSE_TIMEOUT 256	// Number of clocks sent to the SD card before giving up
+#define WRITE_TIMEOUT	300		// Time to wait for the card to finish writing
 
 //---------------------------------------------------------------
 // Variables required for tracking SD state
@@ -245,7 +252,9 @@ static bool _M3SD_initCard (void) {
 
 	for (i = 0; i < MAX_STARTUP_TRIES ; i++) {
 		_M3SD_sendCommand (APP_CMD, 0);
-		_M3SD_getResponse_R1 (responseBuffer);
+		if (!_M3SD_getResponse_R1 (responseBuffer)) {
+			return false;
+		}
 	
 		_M3SD_sendCommand (SD_APP_OP_COND, 3<<16);
 		if ((_M3SD_getResponse_R3 (responseBuffer)) && ((responseBuffer[1] & 0x80) != 0)) {	
@@ -372,9 +381,9 @@ static bool _M3SD_writeData (u8* data, u8* crc) {
 	int i;
 	u8 temp;
 
-	_M3SD_clkin();
-	
-	while ((REG_M3SD_DAT & 0x100) == 0);
+	do {
+		_M3SD_clkin();
+	} while ((REG_M3SD_DAT & 0x100) == 0);
 	
 	REG_M3SD_DAT = 0;	// Start bit
 	
@@ -472,7 +481,7 @@ bool _M3SD_readSectors (u32 sector, u32 numSectors, void* buffer) {
 		_M3SD_sendCommand (STOP_TRANSMISSION, 0);
 		_M3SD_getResponse_R1b (responseBuffer);
 	}
-	
+
 	return true;
 }
 
@@ -481,8 +490,12 @@ bool _M3SD_writeSectors (u32 sector, u32 numSectors, const void* buffer) {
 	u8 responseBuffer[6];
 	u32 offset = sector * BYTES_PER_READ;
 	u8* data = (u8*) buffer;
-
+	int i;
+	// Precalculate the data CRC
+	_SD_CRC16 ( data, BYTES_PER_READ, crc);
+	
 	while (numSectors--) {
+		// Send a single sector write command
 		_M3SD_sendCommand (WRITE_BLOCK, offset);
 		if (!_M3SD_getResponse_R1 (responseBuffer)) {
 			return false;
@@ -491,12 +504,29 @@ bool _M3SD_writeSectors (u32 sector, u32 numSectors, const void* buffer) {
 		REG_M3SD_DIR = 0x4;
 		REG_M3SD_STS = 0x0;
 	
-		_SD_CRC16 ( data, BYTES_PER_READ, crc);
+		// Send the data
 		if (! _M3SD_writeData( data, crc)) {
 			return false;
 		}
-		offset += BYTES_PER_READ;
-		data += BYTES_PER_READ;
+		
+		if (numSectors > 0) {
+			offset += BYTES_PER_READ;
+			data += BYTES_PER_READ;
+			// Calculate the next CRC while waiting for the card to finish writing
+			_SD_CRC16 ( data, BYTES_PER_READ, crc);
+		}
+		
+		// Wait for the card to be ready for the next transfer
+		i = WRITE_TIMEOUT;
+		responseBuffer[3] = 0;
+		do {
+			_M3SD_sendCommand (SEND_STATUS, _M3SD_relativeCardAddress);
+			_M3SD_getResponse_R1 (responseBuffer);
+			i--;
+			if (i <= 0) {
+				return false;
+			}
+		} while (((responseBuffer[3] & 0x1f) != ((SD_STATE_TRAN << 1) | READY_FOR_DATA)));
 	}
 	
 	return true;
@@ -512,7 +542,7 @@ bool _M3SD_shutdown (void) {
 	return true;
 }
 
-IO_INTERFACE _io_m3sd = {
+const IO_INTERFACE _io_m3sd = {
 	DEVICE_TYPE_M3SD,
 	FEATURE_MEDIUM_CANREAD | FEATURE_MEDIUM_CANWRITE | FEATURE_SLOT_GBA,
 	(FN_MEDIUM_STARTUP)&_M3SD_startUp,

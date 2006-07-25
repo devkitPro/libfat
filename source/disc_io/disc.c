@@ -58,8 +58,9 @@
 		* Removed SUPPORT_* defines
 		* Rewrote device detection functions
 		* First libfat release
-
-
+	
+	2006-07-25 - Chishm
+		* Changed IO_INTERFACEs to const
 */
 
 #include "disc.h"
@@ -81,7 +82,7 @@
 #include "io_efa2.h"
 #include "io_mmcf.h"
 
-IO_INTERFACE* ioInterfaces[] = {
+const IO_INTERFACE* ioInterfaces[] = {
 #ifdef NDS
 	// Place Slot 1 (DS Card) interfaces here
 	&_io_nmmc,
@@ -98,7 +99,7 @@ IO_INTERFACE* ioInterfaces[] = {
 
 */
 
-IO_INTERFACE* _FAT_disc_gbaSlotFindInterface (void)
+const IO_INTERFACE* _FAT_disc_gbaSlotFindInterface (void)
 {
 	// If running on an NDS, make sure the correct CPU can access
 	// the GBA cart. First implemented by SaTa.
@@ -128,7 +129,7 @@ IO_INTERFACE* _FAT_disc_gbaSlotFindInterface (void)
  * and it returns true. Otherwise the default interface is left
  * untouched and it returns false.
  */
-IO_INTERFACE* _FAT_disc_dsSlotFindInterface (void)
+const IO_INTERFACE* _FAT_disc_dsSlotFindInterface (void)
 {
 #ifdef ARM9
 	WAIT_CR &= ~ARM9_OWNS_CARD;
@@ -157,7 +158,7 @@ IO_INTERFACE* _FAT_disc_dsSlotFindInterface (void)
  * untouched and it returns false.
  */
 #ifdef NDS
-IO_INTERFACE* _FAT_disc_findInterface (void)
+const IO_INTERFACE* _FAT_disc_findInterface (void)
 {
 #ifdef ARM9
 	WAIT_CR &= ~(ARM9_OWNS_CARD | ARM9_OWNS_ROM);
@@ -177,7 +178,7 @@ IO_INTERFACE* _FAT_disc_findInterface (void)
 	return NULL;
 }
 #else
-IO_INTERFACE* _FAT_disc_findInterface (void)
+const IO_INTERFACE* _FAT_disc_findInterface (void)
 {
 	return _FAT_disc_gbaSlotFindInterface();
 }

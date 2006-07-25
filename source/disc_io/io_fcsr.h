@@ -39,6 +39,6 @@
 #include "disc_io.h"
 
 // export interface
-extern IO_INTERFACE _io_fcsr ;
+extern const IO_INTERFACE _io_fcsr ;
 
 #endif	// define IO_FCSR_H

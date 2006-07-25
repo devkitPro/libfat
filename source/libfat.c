@@ -105,7 +105,7 @@ bool fatMountNormalInterface (PARTITION_INTERFACE partitionNumber, u32 cacheSize
 	return _FAT_partition_mount (partitionNumber, cacheSize);
 }
 
-bool fatMountCustomInterface (IO_INTERFACE* device, u32 cacheSize) {
+bool fatMountCustomInterface (const IO_INTERFACE* device, u32 cacheSize) {
 	return _FAT_partition_mountCustomInterface (device, cacheSize);
 }
 

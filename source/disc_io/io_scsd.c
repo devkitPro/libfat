@@ -32,6 +32,10 @@
  
 	2006-07-22 - Chishm
 		* First release of stable code
+		
+	2006-07-25 - Chishm
+		* Improved startup function that doesn't delay hundreds of seconds
+		  before reporting no card inserted.
 */
 
 #include "io_scsd.h"
@@ -59,12 +63,12 @@
 
 //---------------------------------------------------------------
 // Send / receive timeouts, to stop infinite wait loops
-#define MAX_STARTUP_TRIES 100	// Arbitrary value, check if the card is ready 100 times before giving up
+#define MAX_STARTUP_TRIES 20	// Arbitrary value, check if the card is ready 20 times before giving up
 #define NUM_STARTUP_CLOCKS 100	// Number of empty (0xFF when sending) bytes to send/receive to/from the card
 #define TRANSMIT_TIMEOUT 10000	// Time to wait for the SC to respond to transmit or receive requests
 #define RESPONSE_TIMEOUT 256	// Number of clocks sent to the SD card before giving up
 #define BUSY_WAIT_TIMEOUT 500000
-#define WRITE_TIMEOUT	10000	// Time to wait for the card to finish writing
+#define WRITE_TIMEOUT	300	// Time to wait for the card to finish writing
 //---------------------------------------------------------------
 // Variables required for tracking SD state
 static u32 _SCSD_relativeCardAddress = 0;	// Preshifted Relative Card Address
@@ -200,7 +204,9 @@ static bool _SCSD_initCard (void) {
 
 	for (i = 0; i < MAX_STARTUP_TRIES ; i++) {
 		_SCSD_sendCommand (APP_CMD, 0);
-		_SCSD_getResponse_R1 (responseBuffer);
+		if (!_SCSD_getResponse_R1 (responseBuffer)) {
+			return false;
+		}
 	
 		_SCSD_sendCommand (SD_APP_OP_COND, 3<<16);
 		if ((_SCSD_getResponse_R3 (responseBuffer)) && ((responseBuffer[1] & 0x80) != 0)) {	
@@ -406,7 +412,7 @@ bool _SCSD_shutdown (void) {
 	return true;
 }
 
-IO_INTERFACE _io_scsd = {
+const IO_INTERFACE _io_scsd = {
 	DEVICE_TYPE_SCSD,
 	FEATURE_MEDIUM_CANREAD | FEATURE_MEDIUM_CANWRITE | FEATURE_SLOT_GBA,
 	(FN_MEDIUM_STARTUP)&_SCSD_startUp,

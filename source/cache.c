@@ -43,7 +43,7 @@
 
 #define CACHE_FREE 0xFFFFFFFF
 
-CACHE* _FAT_cache_constructor (u32 numberOfPages, IO_INTERFACE* discInterface) {
+CACHE* _FAT_cache_constructor (u32 numberOfPages, const IO_INTERFACE* discInterface) {
 	CACHE* cache;
 	u32 i;
 	CACHE_ENTRY* cacheEntries;

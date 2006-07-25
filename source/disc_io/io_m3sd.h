@@ -43,6 +43,6 @@
 #include "disc_io.h"
 
 // export interface
-extern IO_INTERFACE _io_m3sd ;
+extern const IO_INTERFACE _io_m3sd ;
 
 #endif	// define IO_M3SD_H

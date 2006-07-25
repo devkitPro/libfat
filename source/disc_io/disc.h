@@ -41,7 +41,7 @@ Search for a block based device in the GBA slot.
 Return a pointer to a usable interface if one is found,
 NULL if not.
 */
-extern IO_INTERFACE* _FAT_disc_gbaSlotFindInterface (void);
+extern const IO_INTERFACE* _FAT_disc_gbaSlotFindInterface (void);
 
 /*
 Search for a block based device in the DS slot.
@@ -49,7 +49,7 @@ Return a pointer to a usable interface if one is found,
 NULL if not.
 */
 #ifdef NDS
-extern IO_INTERFACE* _FAT_disc_dsSlotFindInterface (void);
+extern const IO_INTERFACE* _FAT_disc_dsSlotFindInterface (void);
 #endif
 
 /*
@@ -57,13 +57,13 @@ Search for a block based device in the both slots.
 Return a pointer to a usable interface if one is found,
 NULL if not.
 */
-extern IO_INTERFACE* _FAT_disc_findInterface (void);
+extern const IO_INTERFACE* _FAT_disc_findInterface (void);
 
 /*
 Check if a disc is inserted
 Return true if a disc is inserted and ready, false otherwise
 */
-static inline bool _FAT_disc_isInserted (IO_INTERFACE* disc) {
+static inline bool _FAT_disc_isInserted (const IO_INTERFACE* disc) {
 	return disc->fn_isInserted();
 }
 
@@ -73,7 +73,7 @@ numSectors is between 1 and 256
 sector is from 0 to 2^28
 buffer is a pointer to the memory to fill
 */
-static inline bool _FAT_disc_readSectors (IO_INTERFACE* disc, u32 sector, u32 numSectors, void* buffer) {
+static inline bool _FAT_disc_readSectors (const IO_INTERFACE* disc, u32 sector, u32 numSectors, void* buffer) {
 	return disc->fn_readSectors (sector, numSectors, buffer);
 }
 
@@ -83,21 +83,21 @@ numSectors is between 1 and 256
 sector is from 0 to 2^28
 buffer is a pointer to the memory to read from
 */
-static inline bool _FAT_disc_writeSectors (IO_INTERFACE* disc, u32 sector, u32 numSectors, const void* buffer) {
+static inline bool _FAT_disc_writeSectors (const IO_INTERFACE* disc, u32 sector, u32 numSectors, const void* buffer) {
 	return disc->fn_writeSectors (sector, numSectors, buffer);
 }
 
 /*
 Reset the card back to a ready state
 */
-static inline bool _FAT_disc_clearStatus (IO_INTERFACE* disc) {
+static inline bool _FAT_disc_clearStatus (const IO_INTERFACE* disc) {
 	return disc->fn_clearStatus();
 }
 
 /*
 Initialise the disc to a state ready for data reading or writing
 */
-static inline bool _FAT_disc_startup (IO_INTERFACE* disc) {
+static inline bool _FAT_disc_startup (const IO_INTERFACE* disc) {
 	return disc->fn_startup();
 }
 
@@ -105,21 +105,21 @@ static inline bool _FAT_disc_startup (IO_INTERFACE* disc) {
 Put the disc in a state ready for power down.
 Complete any pending writes and disable the disc if necessary
 */
-static inline bool _FAT_disc_shutdown (IO_INTERFACE* disc) {
+static inline bool _FAT_disc_shutdown (const IO_INTERFACE* disc) {
 	return disc->fn_shutdown();
 }
 
 /*
 Return a 32 bit value unique to each type of interface
 */
-static inline u32 _FAT_disc_hostType (IO_INTERFACE* disc) {
+static inline u32 _FAT_disc_hostType (const IO_INTERFACE* disc) {
 	return disc->ioType;
 }
 
 /*
 Return a 32 bit value that specifies the capabilities of the disc
 */
-static inline u32 _FAT_disc_features (IO_INTERFACE* disc) {
+static inline u32 _FAT_disc_features (const IO_INTERFACE* disc) {
 	return disc->features;
 }
 

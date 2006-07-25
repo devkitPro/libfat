@@ -46,7 +46,7 @@
 
 
 // export interface
-extern IO_INTERFACE _io_nmmc;
+extern const IO_INTERFACE _io_nmmc;
 
 #endif // defined NDS
 

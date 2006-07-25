@@ -51,7 +51,7 @@ typedef struct {
 } CACHE_ENTRY;
 
 typedef struct {
-	IO_INTERFACE* disc;
+	const IO_INTERFACE* disc;
 	u32 numberOfPages;
 	CACHE_ENTRY* cacheEntries;
 	u8* pages;
@@ -111,7 +111,7 @@ Clear out the contents of the cache without writing any dirty sectors first
 */
 void _FAT_cache_invalidate (CACHE* cache);
 
-CACHE* _FAT_cache_constructor (u32 numberOfPages, IO_INTERFACE* discInterface);
+CACHE* _FAT_cache_constructor (u32 numberOfPages, const IO_INTERFACE* discInterface);
 
 void _FAT_cache_destructor (CACHE* cache);
 

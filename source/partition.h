@@ -58,7 +58,7 @@ typedef struct {
 } FAT;
 
 typedef struct {
-	IO_INTERFACE* disc;
+	const IO_INTERFACE* disc;
 	CACHE* cache;
 	// Info about the partition
 	bool readOnly;		// If this is set, then do not try writing to the disc
@@ -87,7 +87,7 @@ bool _FAT_partition_mount (PARTITION_INTERFACE partitionNumber, u32 cacheSize);
 /*
 Mount a partition on a custom device
 */
-bool _FAT_partition_mountCustomInterface (IO_INTERFACE* device, u32 cacheSize);
+bool _FAT_partition_mountCustomInterface (const IO_INTERFACE* device, u32 cacheSize);
 
 /*
 Unmount the partition specified by partitionNumber

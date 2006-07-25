@@ -108,7 +108,7 @@ PARTITION* _partitions[MAXIMUM_PARTITIONS] = {NULL};
 // Use a single static buffer for the partitions
 
 
-static PARTITION* _FAT_partition_constructor ( IO_INTERFACE* disc, u32 cacheSize) {
+static PARTITION* _FAT_partition_constructor ( const IO_INTERFACE* disc, u32 cacheSize) {
 	PARTITION* partition;
 	int i;
 	u32 bootSector;
@@ -231,7 +231,7 @@ static void _FAT_partition_destructor (PARTITION* partition) {
 bool _FAT_partition_mount (PARTITION_INTERFACE partitionNumber, u32 cacheSize) {
 #ifdef NDS
 	int i;
-	IO_INTERFACE* disc = NULL;
+	const IO_INTERFACE* disc = NULL;
 	
 	if (_partitions[partitionNumber] != NULL) {
 		return false;
@@ -273,7 +273,7 @@ bool _FAT_partition_mount (PARTITION_INTERFACE partitionNumber, u32 cacheSize) {
 	}
 
 #else // not defined NDS
-	IO_INTERFACE* disc = NULL;
+	const IO_INTERFACE* disc = NULL;
 	
 	if (_partitions[partitionNumber] != NULL) {
 		return false;
@@ -288,7 +288,7 @@ bool _FAT_partition_mount (PARTITION_INTERFACE partitionNumber, u32 cacheSize) {
 	return true;
 }
 
-bool _FAT_partition_mountCustomInterface (IO_INTERFACE* device, u32 cacheSize) {
+bool _FAT_partition_mountCustomInterface (const IO_INTERFACE* device, u32 cacheSize) {
 #ifdef NDS	
 	int i;
 	

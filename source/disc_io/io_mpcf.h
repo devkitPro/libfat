@@ -40,6 +40,6 @@
 #include "disc_io.h"
 
 // export interface
-extern IO_INTERFACE _io_mpcf ;
+extern const IO_INTERFACE _io_mpcf ;
 
 #endif	// define IO_MPCF_H

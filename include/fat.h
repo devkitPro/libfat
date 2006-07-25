@@ -87,7 +87,7 @@ bool fatMountNormalInterface (PARTITION_INTERFACE partitionNumber, u32 cacheSize
 /*
 Mount a partition on a custom device
 */
-bool fatMountCustomInterface (struct IO_INTERFACE_STRUCT* device, u32 cacheSize);
+bool fatMountCustomInterface (const struct IO_INTERFACE_STRUCT* device, u32 cacheSize);
 
 /*
 Unmount the partition specified by partitionNumber

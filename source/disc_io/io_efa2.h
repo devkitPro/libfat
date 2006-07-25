@@ -18,6 +18,6 @@
 #include "disc_io.h"
 
 // export interface
-extern IO_INTERFACE _io_efa2;
+extern const IO_INTERFACE _io_efa2;
 
 #endif	// define IO_EFA2_H

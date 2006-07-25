@@ -40,6 +40,6 @@
 #include "disc_io.h"
 
 // export interface
-extern IO_INTERFACE _io_sccf;
+extern const IO_INTERFACE _io_sccf;
 
 #endif	// define IO_SCCF_H
