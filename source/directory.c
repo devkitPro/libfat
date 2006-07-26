@@ -589,12 +589,14 @@ static bool _FAT_directory_findEntryGap (PARTITION* partition, DIR_ENTRY* entry,
 
 	if (endOfDirectory) {
 		memset (entryData, DIR_ENTRY_LAST, DIR_ENTRY_DATA_SIZE);
-		while (((dirEntryRemain + 1) > 0) && entryStillValid) {
+		dirEntryRemain += 1;	// Increase by one to take account of End Of Directory Marker
+		while ((dirEntryRemain > 0) && entryStillValid) {
+			// Get the gapEnd before incrementing it, so the second to last one is saved
+			entry->dataEnd = gapEnd;
+			// Increment gapEnd, moving onto the next entry
 			entryStillValid = _FAT_directory_incrementDirEntryPosition (partition, &gapEnd, true);
 			-- dirEntryRemain;
-			if (dirEntryRemain > 0) {
-				entry->dataEnd = gapEnd;
-			}
+			// Fill the entry with blanks
 			_FAT_cache_writePartialSector (partition->cache, entryData, _FAT_fat_clusterToSector(partition, gapEnd.cluster) + gapEnd.sector, gapEnd.offset * DIR_ENTRY_DATA_SIZE, DIR_ENTRY_DATA_SIZE);
 		}
 		if (!entryStillValid) {
