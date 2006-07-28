@@ -256,7 +256,7 @@ static bool _M3SD_initCard (void) {
 			return false;
 		}
 	
-		_M3SD_sendCommand (SD_APP_OP_COND, 3<<16);
+		_M3SD_sendCommand (SD_APP_OP_COND, SD_OCR_VALUE);
 		if ((_M3SD_getResponse_R3 (responseBuffer)) && ((responseBuffer[1] & 0x80) != 0)) {	
 			// Card is ready to receive commands now
 			break;

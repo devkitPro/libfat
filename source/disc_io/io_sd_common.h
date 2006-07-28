@@ -32,6 +32,9 @@
 
 	2006-07-11 - Chishm
 		* Original release
+	
+	2006-07-28 - Chishm
+		* Changed voltage range that the SD card can use
 */
 
 #ifndef IO_SD_COMMON_H
@@ -59,6 +62,9 @@
 #define SET_BUS_WIDTH 6
 #define SD_APP_OP_COND 41
 
+/* OCR (Operating Conditions Register) send value */
+//#define SD_OCR_VALUE 0x00030000 /* 2.8V to 3.0V */
+#define SD_OCR_VALUE 0x003F8000 /* 2.7V to 3.4V */
 
 /* SD Data repsonses */
 #define SD_CARD_BUSY 0xff
