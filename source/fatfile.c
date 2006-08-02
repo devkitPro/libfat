@@ -33,6 +33,9 @@
 	2006-07-17 - Chishm
 		* Made all path inputs const char*
 		* Added _FAT_rename_r
+		
+	2006-08-02 - Chishm
+		* Fixed _FAT_seek_r
 */
 
 
@@ -731,40 +734,37 @@ int _FAT_seek_r (struct _reent *r, int fd, int pos, int dir) {
 		return -1;
 	}
 	
-	if (position <= file->filesize) {
+	// Only change the read/write position if it is within the bounds of the current filesize
+	if (file->filesize > position) {
+			
 		// Calculate the sector and byte of the current position,
 		// and store them
 		file->rwPosition.sector = (position % partition->bytesPerCluster) / BYTES_PER_READ;
 		file->rwPosition.byte = position % BYTES_PER_READ;
-
+	
 		// Calculate where the correct cluster is
-		if (position > file->currentPosition) {
-			clusCount = (position - file->currentPosition 
-						+ (file->rwPosition.sector * partition->bytesPerSector)
-						+ file->rwPosition.byte) / partition->bytesPerCluster;	// Fixed thanks to AgentQ
+		if (position >= file->currentPosition) {
+			clusCount = (position / partition->bytesPerCluster) - (file->currentPosition / partition->bytesPerCluster);
 			cluster = file->rwPosition.cluster;
 		} else {
 			clusCount = position / partition->bytesPerCluster;
 			cluster = file->startCluster;
 		}
-
-		// Follow cluster list until desired one is found
-		if (clusCount > 0) {
-			// Only look at next cluster if need to
+	
+		nextCluster = _FAT_fat_nextCluster (partition, cluster);
+		while ((clusCount > 0) && (nextCluster != CLUSTER_FREE) && (nextCluster != CLUSTER_EOF)) {
+			clusCount--;
+			cluster = nextCluster;
 			nextCluster = _FAT_fat_nextCluster (partition, cluster);
-			while ((clusCount--) && (nextCluster != CLUSTER_FREE) && (nextCluster != CLUSTER_EOF)) {
-				cluster = nextCluster;
-				nextCluster = _FAT_fat_nextCluster (partition, cluster);
-			}
-		} else {
-			nextCluster = cluster;
 		}
+		
 		// Check if ran out of clusters, and the file is being written to
 		if ((clusCount > 0) && (file->write || file->append)) {
 			// Set flag to allocate a new cluster
 			file->rwPosition.sector = partition->sectorsPerCluster;
 			file->rwPosition.byte = 0;
 		}
+		
 		file->rwPosition.cluster = cluster;
 	}
 	
