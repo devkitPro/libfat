@@ -36,6 +36,9 @@
 	2006-07-25 - Chishm
 		* Improved startup function that doesn't delay hundreds of seconds
 		  before reporting no card inserted.
+
+	2006-08-05 - Chishm
+		* Tries multiple times to get a Relative Card Address at startup
 */
 
 #include "io_scsd.h"
@@ -224,9 +227,17 @@ static bool _SCSD_initCard (void) {
 	_SCSD_getResponse_R2 (responseBuffer);
 	
 	// Get a new address
-	_SCSD_sendCommand (SEND_RELATIVE_ADDR, 0);
-	_SCSD_getResponse_R6 (responseBuffer);
-	_SCSD_relativeCardAddress = (responseBuffer[1] << 24) | (responseBuffer[2] << 16);
+	for (i = 0; i < MAX_STARTUP_TRIES ; i++) {
+		_SCSD_sendCommand (SEND_RELATIVE_ADDR, 0);
+		_SCSD_getResponse_R6 (responseBuffer);
+		_SCSD_relativeCardAddress = (responseBuffer[1] << 24) | (responseBuffer[2] << 16);
+		if ((responseBuffer[3] & 0x1e) != (SD_STATE_STBY << 1)) {
+			break;
+		}
+	}
+ 	if (i >= MAX_STARTUP_TRIES) {
+		return false;
+	}
 	
 	// Some cards won't go to higher speeds unless they think you checked their capabilities
 	_SCSD_sendCommand (SEND_CSD, _SCSD_relativeCardAddress);

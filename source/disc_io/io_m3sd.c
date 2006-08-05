@@ -35,6 +35,9 @@
 		  before reporting no card inserted.
 		* Fixed writeData function to timeout on error
 		* writeSectors function now wait until the card is ready before continuing with a transfer
+
+	2006-08-05 - Chishm
+		* Tries multiple times to get a Relative Card Address at startup
 */
 
 #include "io_m3sd.h"
@@ -272,9 +275,17 @@ static bool _M3SD_initCard (void) {
 	_M3SD_getResponse_R2 (responseBuffer);
 	
 	// Get a new address
-	_M3SD_sendCommand (SEND_RELATIVE_ADDR, 0);
-	_M3SD_getResponse_R6 (responseBuffer);
-	_M3SD_relativeCardAddress = (responseBuffer[1] << 24) | (responseBuffer[2] << 16);
+	for (i = 0; i < MAX_STARTUP_TRIES ; i++) {
+		_M3SD_sendCommand (SEND_RELATIVE_ADDR, 0);
+		_M3SD_getResponse_R6 (responseBuffer);
+		_M3SD_relativeCardAddress = (responseBuffer[1] << 24) | (responseBuffer[2] << 16);
+		if ((responseBuffer[3] & 0x1e) != (SD_STATE_STBY << 1)) {
+			break;
+		}
+	}
+ 	if (i >= MAX_STARTUP_TRIES) {
+		return false;
+	}
 	
 	// Some cards won't go to higher speeds unless they think you checked their capabilities
 	_M3SD_sendCommand (SEND_CSD, _M3SD_relativeCardAddress);
