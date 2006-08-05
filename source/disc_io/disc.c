@@ -61,6 +61,9 @@
 	
 	2006-07-25 - Chishm
 		* Changed IO_INTERFACEs to const
+		
+	2006-08-02 - Chishm
+		* Added NinjaDS
 */
 
 #include "disc.h"
@@ -81,11 +84,12 @@
 #include "io_nmmc.h"
 #include "io_efa2.h"
 #include "io_mmcf.h"
+#include "io_njsd.h"
 
 const IO_INTERFACE* ioInterfaces[] = {
 #ifdef NDS
 	// Place Slot 1 (DS Card) interfaces here
-	&_io_nmmc,
+	&_io_njsd, &_io_nmmc,
 #endif
 	// Place Slot 2 (GBA Cart) interfaces here
 	&_io_mpcf, &_io_m3cf, &_io_sccf, &_io_scsd, &_io_m3sd, &_io_fcsr
