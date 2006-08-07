@@ -64,7 +64,8 @@
 
 /* OCR (Operating Conditions Register) send value */
 //#define SD_OCR_VALUE 0x00030000 /* 2.8V to 3.0V */
-#define SD_OCR_VALUE 0x003F8000 /* 2.7V to 3.4V */
+//#define SD_OCR_VALUE 0x003F8000 /* 2.7V to 3.4V */
+#define SD_OCR_VALUE 0x00FC0000
 
 /* SD Data repsonses */
 #define SD_CARD_BUSY 0xff
@@ -95,5 +96,19 @@ four data lines at once
 */
 extern void _SD_CRC16 (u8* buff, int buffLength, u8* crc16buff);
 
+typedef bool (*_SD_FN_CMD_6BYTE_RESPONSE) (u8* responseBuffer, u8 command, u32 data);
+typedef bool (*_SD_FN_CMD_17BYTE_RESPONSE) (u8* responseBuffer, u8 command, u32 data);
+
+/*
+Initialise the SD card, after it has been sent into an Idle state
+cmd_6byte_response: a pointer to a function that sends the SD card a command and gets a 6 byte response
+cmd_17byte_response: a pointer to a function that sends the SD card a command and gets a 17 byte response
+use4bitBus: initialise card to use a 4 bit data bus when communicating with the card
+RCA: a pointer to the location to store the card's Relative Card Address, preshifted up by 16 bits.
+*/
+extern bool _SD_InitCard (_SD_FN_CMD_6BYTE_RESPONSE cmd_6byte_response, 
+							_SD_FN_CMD_17BYTE_RESPONSE cmd_17byte_response,
+							bool use4bitBus,
+							u32 *RCA);
 
 #endif // define IO_SD_COMMON_H

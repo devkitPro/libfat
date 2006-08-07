@@ -35,6 +35,9 @@
 	2006-08-06 - Chishm
 		* Removed unneeded _NJSD_writeRAM function
 		* Removed casts for calls to cardWriteCommand
+		
+	2006-08-07 - Chishm
+		* Moved the SD initialization to a common function
 */
 
 #include "io_njsd.h"
@@ -46,7 +49,6 @@
 #include "io_sd_common.h"
 
 #define _NJSD_SYNC
-// #define _NJSD_DEBUG
 
 //---------------------------------------------------------------
 // Card communication speeds
@@ -64,11 +66,10 @@
 
 //---------------------------------------------------------------
 // Send / receive timeouts, to stop infinite wait loops
-#define IRQ_TIMEOUT 100000
-#define RESET_TIMEOUT 1000
-#define COMMAND_TIMEOUT 10000
-#define MAX_STARTUP_TRIES 20	// Arbitrary value, check if the card is ready 20 times before giving up
-#define WRITE_TIMEOUT	300	// Time to wait for the card to finish writing
+#define IRQ_TIMEOUT 1000000
+#define RESET_TIMEOUT 10000
+#define COMMAND_TIMEOUT 100000
+#define WRITE_TIMEOUT	3000	// Time to wait for the card to finish writing
 
 
 static const u8 _NJSD_read_cmd[8] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x40};
@@ -191,13 +192,6 @@ static bool _NJSD_sendCMDR (int speed, u8 *rsp_buf, int type, u8 cmd, u32 param)
 				i++;
 			}
 		} while (CARD_CR2 & CARD_BUSY);
-
-#ifdef _NJSD_DEBUG
-		iprintf ("r: ");
-		for (i = 0; i < 6; i++)
-			iprintf ("%02X ", rsp_buf[i]);
-		iprintf ("\n");
-#endif
 	} else {
 		CARD_CR2 = _NJSD_cardFlags;
 		while (CARD_CR2 & CARD_BUSY);
@@ -390,62 +384,32 @@ static bool _NJSD_sendCMDN (int speed, u8 cmd, u32 param) {
 	return true;
 }
 
+bool _NJSD_cmd_6byte_response (u8* responseBuffer, u8 command, u32 data) {
+	return _NJSD_sendCMDR (SD_CLK_167KHz, responseBuffer, SD_RSP_48, command, data);
+}
+
+bool _NJSD_cmd_17byte_response (u8* responseBuffer, u8 command, u32 data) {
+	return _NJSD_sendCMDR (SD_CLK_167KHz, responseBuffer, SD_RSP_136, command, data);
+}
+
 static bool _NJSD_cardInit (void) {
-	u8 responseBuffer[17];
-	int i;
- 
 	// If the commands succeed the first time, assume they'll always succeed
-	if (! _NJSD_sendCLK (SD_CLK_167KHz, 256) ) return false;
-	if (! _NJSD_sendCMDN (SD_CLK_167KHz, GO_IDLE_STATE, 0) ) return false;
+	if (! _NJSD_sendCLK (SD_CLK_167KHz, 256) ) {
+		return false;
+	}
+	if (! _NJSD_sendCMDN (SD_CLK_167KHz, GO_IDLE_STATE, 0) ) {
+		return false;
+	}
 	_NJSD_sendCLK (SD_CLK_167KHz, 8);
  
 	_NJSD_sendCLK (SD_CLK_167KHz, 256);
  	_NJSD_sendCMDN (SD_CLK_167KHz, GO_IDLE_STATE, 0);
 	_NJSD_sendCLK (SD_CLK_167KHz, 8);
  
-	for (i = 0; i < MAX_STARTUP_TRIES ; i++) {
-		_NJSD_sendCMDR (SD_CLK_167KHz, responseBuffer, SD_RSP_48, APP_CMD, 0);
-		if ( 
-			_NJSD_sendCMDR (SD_CLK_167KHz, responseBuffer, SD_RSP_48, SD_APP_OP_COND, SD_OCR_VALUE) &&
-			((responseBuffer[1] & 0x80) != 0))
-		{	
-			// Card is ready to receive commands now
-			break;
-		}
-	}
-	if (i >= MAX_STARTUP_TRIES) {
-		return false;
-	}
- 
-	// The card's name, as assigned by the manufacturer
-	_NJSD_sendCMDR (SD_CLK_167KHz, responseBuffer, SD_RSP_136, ALL_SEND_CID, 0);
- 
-	// Get a new address
-	for (i = 0; i < MAX_STARTUP_TRIES ; i++) {
-		_NJSD_sendCMDR (SD_CLK_167KHz, responseBuffer, SD_RSP_48, SEND_RELATIVE_ADDR, 0);
-		_NJSD_relativeCardAddress = (responseBuffer[1] << 24) | (responseBuffer[2] << 16);
-		if ((responseBuffer[3] & 0x1e) != (SD_STATE_STBY << 1)) {
-			break;
-		}
-	}
- 	if (i >= MAX_STARTUP_TRIES) {
-		return false;
-	}
-
-	// Some cards won't go to higher speeds unless they think you checked their capabilities
-	_NJSD_sendCMDR (SD_CLK_167KHz, responseBuffer, SD_RSP_136, SEND_CSD, _NJSD_relativeCardAddress);
- 
-	// Only this card should respond to all future commands
-	_NJSD_sendCMDR (SD_CLK_167KHz, responseBuffer, SD_RSP_48, SELECT_CARD, _NJSD_relativeCardAddress);
- 
-	// Set a 4 bit data bus
-	_NJSD_sendCMDR (SD_CLK_167KHz, responseBuffer, SD_RSP_48, APP_CMD, _NJSD_relativeCardAddress);
-	_NJSD_sendCMDR (SD_CLK_167KHz, responseBuffer, SD_RSP_48, SET_BUS_WIDTH, 2); // 4-bit mode.
-
-	// Use 512 byte blocks
-	_NJSD_sendCMDR (SD_CLK_167KHz, responseBuffer, SD_RSP_48, SET_BLOCKLEN, 512); // 512 byte blocks
- 
-	return true;
+	return _SD_InitCard (_NJSD_cmd_6byte_response, 
+				_NJSD_cmd_17byte_response,
+				true,
+				&_NJSD_relativeCardAddress);
 }
 
 

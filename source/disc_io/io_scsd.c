@@ -39,6 +39,9 @@
 
 	2006-08-05 - Chishm
 		* Tries multiple times to get a Relative Card Address at startup
+		
+	2006-08-07 - Chishm
+		* Moved the SD initialization to a common function
 */
 
 #include "io_scsd.h"
@@ -66,12 +69,11 @@
 
 //---------------------------------------------------------------
 // Send / receive timeouts, to stop infinite wait loops
-#define MAX_STARTUP_TRIES 20	// Arbitrary value, check if the card is ready 20 times before giving up
 #define NUM_STARTUP_CLOCKS 100	// Number of empty (0xFF when sending) bytes to send/receive to/from the card
-#define TRANSMIT_TIMEOUT 10000	// Time to wait for the SC to respond to transmit or receive requests
+#define TRANSMIT_TIMEOUT 100000 // Time to wait for the SC to respond to transmit or receive requests
 #define RESPONSE_TIMEOUT 256	// Number of clocks sent to the SD card before giving up
 #define BUSY_WAIT_TIMEOUT 500000
-#define WRITE_TIMEOUT	300	// Time to wait for the card to finish writing
+#define WRITE_TIMEOUT	3000	// Time to wait for the card to finish writing
 //---------------------------------------------------------------
 // Variables required for tracking SD state
 static u32 _SCSD_relativeCardAddress = 0;	// Preshifted Relative Card Address
@@ -81,8 +83,17 @@ static u32 _SCSD_relativeCardAddress = 0;	// Preshifted Relative Card Address
 
 extern bool _SCSD_writeData_s (u8 *data, u16* crc);
 
-static inline void _SCSD_unlock (void) {
+static bool _SCSD_unlock (void) {
+	//see if we can write to SCSD RAM
+	vu32 *ramPointer = (u32*)0x08000000;
+	_SC_changeMode (SC_MODE_RAM);
+	*ramPointer = 0x5555aaaa;
+	*ramPointer = ~*ramPointer;
+	if(*ramPointer != 0xaaaa5555) {
+		return false;
+	}
 	_SC_changeMode (SC_MODE_MEDIA);	
+	return true;
 }
 
 static bool _SCSD_sendCommand (u8 command, u32 argument) {
@@ -188,10 +199,18 @@ static void _SCSD_sendClocks (u32 numClocks) {
 	} while (numClocks--);
 }
 
+bool _SCSD_cmd_6byte_response (u8* responseBuffer, u8 command, u32 data) {
+	_SCSD_sendCommand (command, data);
+	return _SCSD_getResponse (responseBuffer, 6);
+}
+
+bool _SCSD_cmd_17byte_response (u8* responseBuffer, u8 command, u32 data) {
+	_SCSD_sendCommand (command, data);
+	return _SCSD_getResponse (responseBuffer, 17);
+}
+
+
 static bool _SCSD_initCard (void) {
-	int i;
-	u8 responseBuffer[17] = {0};		// sizeof 17 to hold the maximum response size possible
-	
 	// Give the card time to stabilise
 	_SCSD_sendClocks (NUM_STARTUP_CLOCKS);
 	
@@ -205,70 +224,11 @@ static bool _SCSD_initCard (void) {
 	// Card is now reset, including it's address
 	_SCSD_relativeCardAddress = 0;
 
-	for (i = 0; i < MAX_STARTUP_TRIES ; i++) {
-		_SCSD_sendCommand (APP_CMD, 0);
-		if (!_SCSD_getResponse_R1 (responseBuffer)) {
-			return false;
-		}
-	
-		_SCSD_sendCommand (SD_APP_OP_COND, SD_OCR_VALUE);
-		if ((_SCSD_getResponse_R3 (responseBuffer)) && ((responseBuffer[1] & 0x80) != 0)) {	
-			// Card is ready to receive commands now
-			break;
-		}
-	}
-	
-	if (i >= MAX_STARTUP_TRIES) {
-		return false;
-	}
-
-	// The card's name, as assigned by the manufacturer
-	_SCSD_sendCommand (ALL_SEND_CID, 0);
-	_SCSD_getResponse_R2 (responseBuffer);
-	
-	// Get a new address
-	for (i = 0; i < MAX_STARTUP_TRIES ; i++) {
-		_SCSD_sendCommand (SEND_RELATIVE_ADDR, 0);
-		_SCSD_getResponse_R6 (responseBuffer);
-		_SCSD_relativeCardAddress = (responseBuffer[1] << 24) | (responseBuffer[2] << 16);
-		if ((responseBuffer[3] & 0x1e) != (SD_STATE_STBY << 1)) {
-			break;
-		}
-	}
- 	if (i >= MAX_STARTUP_TRIES) {
-		return false;
-	}
-	
-	// Some cards won't go to higher speeds unless they think you checked their capabilities
-	_SCSD_sendCommand (SEND_CSD, _SCSD_relativeCardAddress);
-	_SCSD_getResponse_R2 (responseBuffer);
-	
-	// Only this card should respond to all future commands
-	_SCSD_sendCommand (SELECT_CARD, _SCSD_relativeCardAddress);
-	_SCSD_getResponse_R1 (responseBuffer);
-	
-	// Set a 4 bit data bus
-	_SCSD_sendCommand (APP_CMD, _SCSD_relativeCardAddress);
-	_SCSD_getResponse_R1 (responseBuffer);
-	
-	_SCSD_sendCommand (SET_BUS_WIDTH, 2);
-	_SCSD_getResponse_R1 (responseBuffer);
-		
-	// Use 512 byte blocks
-	_SCSD_sendCommand (SET_BLOCKLEN, BYTES_PER_READ);
-	_SCSD_getResponse_R1 (responseBuffer);
-
-	// Wait until card is ready for data
-	i = 0;
-	do {
-		if (i >= RESPONSE_TIMEOUT) {
-			return false;
-		}
-		i++;
-		_SCSD_sendCommand (SEND_STATUS, _SCSD_relativeCardAddress);
-	} while ((!_SCSD_getResponse_R1 (responseBuffer)) && ((responseBuffer[3] & 0x1f) != ((SD_STATE_TRAN << 1) | READY_FOR_DATA)));
-	
-	return true;
+	// Init the card
+	return _SD_InitCard (_SCSD_cmd_6byte_response, 
+				_SCSD_cmd_17byte_response,
+				true,
+				&_SCSD_relativeCardAddress);
 }
 
 static bool _SCSD_readData (void* buffer) {
@@ -313,7 +273,9 @@ static bool _SCSD_readData (void* buffer) {
 // Functions needed for the external interface
 
 bool _SCSD_startUp (void) {
-	_SCSD_unlock();
+	if (!_SCSD_unlock()) {
+		return false;
+	}
 	return _SCSD_initCard();
 }
 

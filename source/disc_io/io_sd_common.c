@@ -29,9 +29,16 @@
  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
  EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+		
+	2006-08-07 - Chishm
+		* Moved the SD initialization to a common function
+		* Increased timeouts for slower cards
 */
 
 #include "io_sd_common.h"
+
+#define MAX_STARTUP_TRIES 1000	// Arbitrary value, check if the card is ready 20 times before giving up
+#define RESPONSE_TIMEOUT 256	// Number of clocks sent to the SD card before giving up
 
 /*
 Improved CRC7 function provided by cory1492
@@ -121,4 +128,76 @@ void _SD_CRC16 (u8* buff, int buffLength, u8* crc16buff) {
 	
 	return;
 }
+
+/*
+Initialise the SD card, after it has been sent into an Idle state
+cmd_6byte_response: a pointer to a function that sends the SD card a command and gets a 6 byte response
+cmd_17byte_response: a pointer to a function that sends the SD card a command and gets a 17 byte response
+use4bitBus: initialise card to use a 4 bit data bus when communicating with the card
+RCA: a pointer to the location to store the card's Relative Card Address, preshifted up by 16 bits.
+*/
+bool _SD_InitCard (_SD_FN_CMD_6BYTE_RESPONSE cmd_6byte_response, 
+					_SD_FN_CMD_17BYTE_RESPONSE cmd_17byte_response,
+					bool use4bitBus,
+					u32 *RCA)
+{
+	u8 responseBuffer[17] = {0};
+	int i;
+	
+	for (i = 0; i < MAX_STARTUP_TRIES ; i++) {
+		cmd_6byte_response (responseBuffer, APP_CMD, 0);
+		if ( 
+			cmd_6byte_response (responseBuffer, SD_APP_OP_COND, SD_OCR_VALUE) &&
+			((responseBuffer[1] & 0x80) != 0))
+		{	
+			// Card is ready to receive commands now
+			break;
+		}
+	}
+	if (i >= MAX_STARTUP_TRIES) {
+		return false;
+	}
+ 
+	// The card's name, as assigned by the manufacturer
+	cmd_17byte_response (responseBuffer, ALL_SEND_CID, 0);
+ 
+	// Get a new address
+	for (i = 0; i < MAX_STARTUP_TRIES ; i++) {
+		cmd_6byte_response (responseBuffer, SEND_RELATIVE_ADDR, 0);
+		*RCA = (responseBuffer[1] << 24) | (responseBuffer[2] << 16);
+		if ((responseBuffer[3] & 0x1e) != (SD_STATE_STBY << 1)) {
+			break;
+		}
+	}
+ 	if (i >= MAX_STARTUP_TRIES) {
+		return false;
+	}
+
+	// Some cards won't go to higher speeds unless they think you checked their capabilities
+	cmd_17byte_response (responseBuffer, SEND_CSD, *RCA);
+ 
+	// Only this card should respond to all future commands
+	cmd_6byte_response (responseBuffer, SELECT_CARD, *RCA);
+ 
+	if (use4bitBus) {
+		// Set a 4 bit data bus
+		cmd_6byte_response (responseBuffer, APP_CMD, *RCA);
+		cmd_6byte_response (responseBuffer, SET_BUS_WIDTH, 2); // 4-bit mode.
+	}
+
+	// Use 512 byte blocks
+	cmd_6byte_response (responseBuffer, SET_BLOCKLEN, 512); // 512 byte blocks
+	
+	// Wait until card is ready for data
+	i = 0;
+	do {
+		if (i >= RESPONSE_TIMEOUT) {
+			return false;
+		}
+		i++;
+	} while (!cmd_6byte_response (responseBuffer, SEND_STATUS, *RCA) && ((responseBuffer[3] & 0x1f) != ((SD_STATE_TRAN << 1) | READY_FOR_DATA)));
+ 
+	return true;
+}
+
 
