@@ -33,6 +33,9 @@
 	2006-08-07 - Chishm
 		* Moved the SD initialization to a common function
 		* Increased timeouts for slower cards
+		
+	2006-08-08 - Chishm
+		* Init aborts when it doesn't get a valid response to APP_CMD - speeds up detection when no card is inserted
 */
 
 #include "io_sd_common.h"
@@ -146,6 +149,10 @@ bool _SD_InitCard (_SD_FN_CMD_6BYTE_RESPONSE cmd_6byte_response,
 	
 	for (i = 0; i < MAX_STARTUP_TRIES ; i++) {
 		cmd_6byte_response (responseBuffer, APP_CMD, 0);
+		// Check that the card gave the correct response
+		if (responseBuffer[0] != APP_CMD) {
+			return false;
+		}
 		if ( 
 			cmd_6byte_response (responseBuffer, SD_APP_OP_COND, SD_OCR_VALUE) &&
 			((responseBuffer[1] & 0x80) != 0))

@@ -83,17 +83,8 @@ static u32 _SCSD_relativeCardAddress = 0;	// Preshifted Relative Card Address
 
 extern bool _SCSD_writeData_s (u8 *data, u16* crc);
 
-static bool _SCSD_unlock (void) {
-	//see if we can write to SCSD RAM
-	vu32 *ramPointer = (u32*)0x08000000;
-	_SC_changeMode (SC_MODE_RAM);
-	*ramPointer = 0x5555aaaa;
-	*ramPointer = ~*ramPointer;
-	if(*ramPointer != 0xaaaa5555) {
-		return false;
-	}
+static inline void _SCSD_unlock (void) {
 	_SC_changeMode (SC_MODE_MEDIA);	
-	return true;
 }
 
 static bool _SCSD_sendCommand (u8 command, u32 argument) {
@@ -273,9 +264,7 @@ static bool _SCSD_readData (void* buffer) {
 // Functions needed for the external interface
 
 bool _SCSD_startUp (void) {
-	if (!_SCSD_unlock()) {
-		return false;
-	}
+	_SCSD_unlock();
 	return _SCSD_initCard();
 }
 
