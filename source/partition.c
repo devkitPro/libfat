@@ -28,6 +28,9 @@
 
 	2006-07-11 - Chishm
 		* Original release
+
+	2006-08-10 - Chishm
+		* Fixed problem when openning files starting with "fat"
 */
 
 
@@ -424,7 +427,10 @@ PARTITION* _FAT_partition_getPartitionFromPath (const char* path) {
 	
 	// Device name extraction code taken from DevKitPro
 	namelen = strlen(DEVICE_NAME);
-	if( strncmp(DEVICE_NAME, path, namelen) == 0 ) {
+	if (strchr (path, ':') == NULL) {
+		// No device specified
+		partitionNumber = PI_DEFAULT;
+	} else if( strncmp(DEVICE_NAME, path, namelen) == 0 ) {
 		if ( path[namelen] == ':' ) {
 			// Only the device name is specified
 			partitionNumber = PI_DEFAULT;
@@ -435,9 +441,6 @@ PARTITION* _FAT_partition_getPartitionFromPath (const char* path) {
 			// Incorrect device name
 			return NULL;
 		}
-	} else if (strchr (path, ':') == NULL) {
-		// No device specified
-		partitionNumber = PI_DEFAULT;
 	} else {
 		// Incorrect device name
 		return NULL;
