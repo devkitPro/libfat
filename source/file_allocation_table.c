@@ -200,6 +200,7 @@ static bool _FAT_fat_writeFatEntry (PARTITION* partition, u32 cluster, u32 value
 gets the first available free cluster, sets it
 to end of file, links the input cluster to it then returns the 
 cluster number
+If an error occurs, return CLUSTER_FREE
 -----------------------------------------------------------------*/
 u32 _FAT_fat_linkFreeCluster(PARTITION* partition, u32 cluster) {
 	u32 firstFree;

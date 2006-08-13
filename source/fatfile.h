@@ -36,6 +36,9 @@
 		
 	2006-07-24 - Chishm
 		* Removed padding workaround from FILE_STRUCT
+
+	2006-08-13 - Chishm
+		* Moved all externally visible directory related functions to fatdir
 */
 
 

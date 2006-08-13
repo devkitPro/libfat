@@ -27,6 +27,9 @@
 
 	2006-07-11 - Chishm
 		* Original release
+
+	2006-08-13 - Chishm
+		* Moved all externally visible directory related functions to fatdir
 */
 
 #include <sys/iosupport.h>
@@ -34,6 +37,7 @@
 #include "common.h"
 #include "partition.h"
 #include "fatfile.h"
+#include "fatdir.h"
 
 #define GBA_DEFAULT_CACHE_PAGES 2
 #define NDS_DEFAULT_CACHE_PAGES 8
