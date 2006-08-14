@@ -25,6 +25,9 @@
  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
  EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ 
+	2006-08-14 - Chishm
+		* entryFromPath correctly finds "" and "." now
 */
 
 #include <string.h>
@@ -428,13 +431,15 @@ bool _FAT_directory_entryFromPath (PARTITION* partition, DIR_ENTRY* entry, const
 		while (pathPosition[0] == DIR_SEPARATOR) {
 			pathPosition++;
 		}
-		if (pathPosition >= pathEnd)  {
-			_FAT_directory_getRootEntry (partition, entry);
-			found = true;
-		}
 	} else {
 		// Start in current working directory
 		dirCluster = partition->cwdCluster;
+	}
+	
+	// If the path is only specifying a directory in the form of "" or ".", return it
+	if ((pathPosition >= pathEnd) || (strncasecmp(".", pathPosition, 2) == 0)) {
+		_FAT_directory_getRootEntry (partition, entry);
+		found = true;
 	}
 
 	while (!found && !notFound) {
