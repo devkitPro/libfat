@@ -30,6 +30,9 @@
 
 	2006-08-13 - Chishm
 		* Moved all externally visible directory related functions to fatdir
+		
+	2006-08-14 - Chishm
+		* Added extended devoptab_t functions
 */
 
 #include <sys/iosupport.h>
