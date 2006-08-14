@@ -30,6 +30,9 @@
 	2006-08-13 - Chishm
 		* Moved all externally visible directory related functions to fatdir
 		* Added _FAT_mkdir_r
+		
+	2006-08-14 - Chishm
+		* Added directory iterator functions
 */
 
 
@@ -38,7 +41,17 @@
 
 #include <sys/reent.h>
 #include <sys/stat.h>
+#include <sys/iosupport.h>
 #include "common.h"
+#include "directory.h"
+
+typedef struct {
+	PARTITION* partition;
+	DIR_ENTRY currentEntry;
+	u32 startCluster;
+	bool inUse;
+	bool validEntry;
+} DIR_STATE_STRUCT;
 
 extern int _FAT_stat_r (struct _reent *r, const char *path, struct stat *st);
 
@@ -51,5 +64,14 @@ extern int _FAT_chdir_r (struct _reent *r, const char *name);
 extern int _FAT_rename_r (struct _reent *r, const char *oldName, const char *newName);
 
 extern int _FAT_mkdir_r (struct _reent *r, const char *path, int mode);
+
+/*
+Directory iterator functions
+*/
+extern dir_iter_t* _FAT_diropen_r(struct _reent *r, dir_iter_t *dirState, const char *path);
+extern int _FAT_dirreset_r (struct _reent *r, dir_iter_t *dirState);
+extern int _FAT_dirnext_r (struct _reent *r, dir_iter_t *dirState, char *filename, struct stat *filestat);
+extern int _FAT_dirclose_r (struct _reent *r, dir_iter_t *dirState);
+
 
 #endif // _FATDIR_H

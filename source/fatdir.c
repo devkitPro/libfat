@@ -30,12 +30,17 @@
 	2006-08-13 - Chishm
 		* Moved all externally visible directory related functions to fatdir
 		* Added _FAT_mkdir_r
+		
+	2006-08-14 - Chishm
+		* Added directory iterator functions
 */
 
 #include <string.h>
 #include <errno.h>
 #include <ctype.h>
 #include <unistd.h>
+
+#include "fatdir.h"
 
 #include "cache.h"
 #include "file_allocation_table.h"
@@ -421,3 +426,102 @@ int _FAT_mkdir_r (struct _reent *r, const char *path, int mode) {
 	return 0;
 }
 
+dir_iter_t* _FAT_diropen_r(struct _reent *r, dir_iter_t *dirState, const char *path) {
+	DIR_ENTRY dirEntry;
+	DIR_STATE_STRUCT* state = (DIR_STATE_STRUCT*) dirState;
+	bool fileExists;
+	
+	state->partition = _FAT_partition_getPartitionFromPath (path);
+
+	if (state->partition == NULL) {
+		r->_errno = ENODEV;
+		return NULL;
+	}
+
+	// Move the path pointer to the start of the actual path
+	if (strchr (path, ':') != NULL) {
+		path = strchr (path, ':') + 1;
+	}
+	if (strchr (path, ':') != NULL) {
+		r->_errno = EINVAL;
+		return NULL;
+	}
+	// Get the start cluster of the directory
+	fileExists = _FAT_directory_entryFromPath (state->partition, &dirEntry, path, NULL);
+	
+	if (!fileExists) {
+		r->_errno = ENOENT;
+		return NULL;
+	}
+	
+	// Make sure it is a directory
+	if (! _FAT_directory_isDirectory (&dirEntry)) {
+		r->_errno = ENOTDIR;
+		return NULL;
+	}
+
+	// Save the start cluster for use when resetting the directory data
+	state->startCluster = _FAT_directory_entryGetCluster (dirEntry.entryData);
+	
+	// Get the first entry for use with a call to dirnext
+	state->validEntry = 
+		_FAT_directory_getFirstEntry (state->partition, &(state->currentEntry), state->startCluster);
+	
+	// We are now using this entry
+	state->inUse = true;
+	return (dir_iter_t*) state;
+}
+
+int _FAT_dirreset_r (struct _reent *r, dir_iter_t *dirState) {
+	DIR_STATE_STRUCT* state = (DIR_STATE_STRUCT*) dirState;
+
+	// Make sure we are still using this entry
+	if (!state->inUse) {
+		r->_errno = EBADF;
+		return -1;
+	}
+
+	// Get the first entry for use with a call to dirnext
+	state->validEntry = 
+		_FAT_directory_getFirstEntry (state->partition, &(state->currentEntry), state->startCluster);
+
+	return 0;
+}
+
+int _FAT_dirnext_r (struct _reent *r, dir_iter_t *dirState, char *filename, struct stat *filestat) {
+	DIR_STATE_STRUCT* state = (DIR_STATE_STRUCT*) dirState;
+
+	// Make sure we are still using this entry
+	if (!state->inUse) {
+		r->_errno = EBADF;
+		return -1;
+	}
+	
+	// Make sure there is another file to report on
+	if (! state->validEntry) {
+		r->_errno = ENOENT;
+		return -1;
+	}
+
+	// Get the filename
+	strncpy (filename, state->currentEntry.filename, MAX_FILENAME_LENGTH);
+	// Get the stats, if requested
+	if (filestat != NULL) {
+		_FAT_directory_entryStat (state->partition, &(state->currentEntry), filestat);
+	}
+	
+	// Look for the next entry for use next time
+	state->validEntry = 
+		_FAT_directory_getNextEntry (state->partition, &(state->currentEntry));
+
+	return 0;
+}
+
+int _FAT_dirclose_r (struct _reent *r, dir_iter_t *dirState) {
+	DIR_STATE_STRUCT* state = (DIR_STATE_STRUCT*) dirState;
+	
+	// We are no longer using this entry
+	state->inUse = false;
+
+	return 0;
+}
