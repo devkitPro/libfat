@@ -28,6 +28,9 @@
  
 	2006-08-14 - Chishm
 		* entryFromPath correctly finds "" and "." now
+		
+	2006-08-17 - Chishm
+		* entryFromPath doesn't look for "" anymore - use "." to refer to the current directory
 */
 
 #include <string.h>
@@ -431,15 +434,14 @@ bool _FAT_directory_entryFromPath (PARTITION* partition, DIR_ENTRY* entry, const
 		while (pathPosition[0] == DIR_SEPARATOR) {
 			pathPosition++;
 		}
+		// If the path is only specifying a directory in the form of "" or ".", return it
+		if ((pathPosition >= pathEnd) || (strncasecmp(".", pathPosition, 2) == 0)) {
+			_FAT_directory_getRootEntry (partition, entry);
+			found = true;
+		}
 	} else {
 		// Start in current working directory
 		dirCluster = partition->cwdCluster;
-	}
-	
-	// If the path is only specifying a directory in the form of "" or ".", return it
-	if ((pathPosition >= pathEnd) || (strncasecmp(".", pathPosition, 2) == 0)) {
-		_FAT_directory_getRootEntry (partition, entry);
-		found = true;
 	}
 
 	while (!found && !notFound) {
