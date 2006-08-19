@@ -33,6 +33,9 @@
 		
 	2006-08-14 - Chishm
 		* Added directory iterator functions
+
+	2006-08-19 - Chishm
+		* Updated dirnext return values to return correctly
 */
 
 #include <string.h>
@@ -499,8 +502,7 @@ int _FAT_dirnext_r (struct _reent *r, dir_iter_t *dirState, char *filename, stru
 	
 	// Make sure there is another file to report on
 	if (! state->validEntry) {
-		r->_errno = ENOENT;
-		return -1;
+		return 0;
 	}
 
 	// Get the filename
@@ -514,7 +516,7 @@ int _FAT_dirnext_r (struct _reent *r, dir_iter_t *dirState, char *filename, stru
 	state->validEntry = 
 		_FAT_directory_getNextEntry (state->partition, &(state->currentEntry));
 
-	return 0;
+	return 1;
 }
 
 int _FAT_dirclose_r (struct _reent *r, dir_iter_t *dirState) {
