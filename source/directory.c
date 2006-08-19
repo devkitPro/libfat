@@ -31,6 +31,9 @@
 		
 	2006-08-17 - Chishm
 		* entryFromPath doesn't look for "" anymore - use "." to refer to the current directory
+	
+	2006-08-19 - Chishm 
+		* Fixed entryFromPath bug when looking for "." in root directory
 */
 
 #include <string.h>
@@ -434,8 +437,8 @@ bool _FAT_directory_entryFromPath (PARTITION* partition, DIR_ENTRY* entry, const
 		while (pathPosition[0] == DIR_SEPARATOR) {
 			pathPosition++;
 		}
-		// If the path is only specifying a directory in the form of "" or ".", return it
-		if ((pathPosition >= pathEnd) || (strncasecmp(".", pathPosition, 2) == 0)) {
+		// If the path is only specifying a directory in the form of "/" return it
+		if (pathPosition >= pathEnd) {
 			_FAT_directory_getRootEntry (partition, entry);
 			found = true;
 		}
@@ -444,6 +447,13 @@ bool _FAT_directory_entryFromPath (PARTITION* partition, DIR_ENTRY* entry, const
 		dirCluster = partition->cwdCluster;
 	}
 
+	// If the path is only specifying a directory in the form "." 
+	// and this is the root directory, return it
+	if ((dirCluster == partition->rootDirCluster) && (strncasecmp(".", pathPosition, 2) == 0)) {
+		_FAT_directory_getRootEntry (partition, entry);
+		found = true;
+	}
+		
 	while (!found && !notFound) {
 		// Get the name of the next required subdirectory within the path
 		nextPathPosition = strchr (pathPosition, DIR_SEPARATOR);
