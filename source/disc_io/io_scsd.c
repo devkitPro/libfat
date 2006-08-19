@@ -210,6 +210,8 @@ bool _SCSD_cmd_17byte_response (u8* responseBuffer, u8 command, u32 data) {
 
 
 static bool _SCSD_initCard (void) {
+	_SCSD_enable_lite();
+	
 	// Give the card time to stabilise
 	_SCSD_sendClocks (NUM_STARTUP_CLOCKS);
 	
@@ -235,8 +237,6 @@ static bool _SCSD_readData (void* buffer) {
 	u16* buff = (u16*)buffer;
 	volatile register u32 temp;
 	int i;
-	
-	_SCSD_enable_lite();
 	
 	i = BUSY_WAIT_TIMEOUT;
 	while ((REG_SCSD_DATAREAD & SCSD_STS_BUSY) && (--i));
@@ -280,6 +280,7 @@ bool _SCSD_startUp (void) {
 
 bool _SCSD_isInserted (void) {
 	u8 responseBuffer [6];
+
 	// Make sure the card receives the command
 	if (!_SCSD_sendCommand (SEND_STATUS, 0)) {
 		return false;
@@ -339,8 +340,6 @@ bool _SCSD_writeSectors (u32 sector, u32 numSectors, const void* buffer) {
 	int i;
 
 	while (numSectors--) {
-		_SCSD_enable_lite ();
-		
 		// Calculate the CRC16
 		_SD_CRC16 ( data, BYTES_PER_READ, (u8*)crc);
 		
