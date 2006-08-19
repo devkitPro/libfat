@@ -32,6 +32,9 @@
 @	2006-07-22 - Chishm
 @		* First release of stable code
 @
+@	2006-08-19 - Chishm
+@		* Added SuperCard Lite support
+@
 @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
     .align 4
@@ -86,10 +89,18 @@ _SCSD_writeData_data_loop_unaligned:
 	
 @ Write the data to the card
 @ 4 halfwords are transmitted to the Supercard at once, for timing purposes
-@ Only the first halfword needs to contain data
+@ Only the first halfword needs to contain data for standard SuperCards
+@ For the SuperCard Lite, the data is split into 4 nibbles, one per halfword
 _SCSD_writeData_data_loop:
 		ldrh	r3, [r0], #2
+		
+@ This bit added for SCLite. Notice that the shift is not the same as in 
+@ the original (buggy) code supplied by Romman
+		add	r3, r3, r3, lsl #20
+		mov	r4, r3, lsr #8
+		
 		stmia   r2, {r3-r4}  
+		
 	subs    r5, r5, #2                 
     bne     _SCSD_writeData_data_loop 
 	

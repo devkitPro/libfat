@@ -42,6 +42,9 @@
 		
 	2006-08-07 - Chishm
 		* Moved the SD initialization to a common function
+		
+	2006-08-19 - Chishm
+		* Added SuperCard Lite support
 */
 
 #include "io_scsd.h"
@@ -54,10 +57,11 @@
 	/* bit 0: command bit to read  		*/
 	/* bit 7: command bit to write 		*/
 
-#define REG_SCSD_DATAWRITE (*(vu16*)(0x09000000))
-#define REG_SCSD_DATAREAD  (*(vu16*)(0x09100000))
-#define REG_SCSD_DATAREAD_32  (*(vu32*)(0x09100000))
-#define REG_SCSD_LOCK      (*(vu16*)(0x09FFFFFE))
+#define REG_SCSD_DATAWRITE	(*(vu16*)(0x09000000))
+#define REG_SCSD_DATAREAD	(*(vu16*)(0x09100000))
+#define REG_SCSD_DATAREAD_32	(*(vu32*)(0x09100000))
+#define REG_SCSD_LITE_ENABLE	(*(vu16*)(0x09440000))
+#define REG_SCSD_LOCK		(*(vu16*)(0x09FFFFFE))
 	/* bit 0: 1				*/
 	/* bit 1: enable IO interface (SD,CF)	*/
 	/* bit 2: enable R/W SDRAM access 	*/
@@ -85,6 +89,10 @@ extern bool _SCSD_writeData_s (u8 *data, u16* crc);
 
 static inline void _SCSD_unlock (void) {
 	_SC_changeMode (SC_MODE_MEDIA);	
+}
+
+static inline void _SCSD_enable_lite (void) {
+	REG_SCSD_LITE_ENABLE = 0;
 }
 
 static bool _SCSD_sendCommand (u8 command, u32 argument) {
@@ -228,6 +236,8 @@ static bool _SCSD_readData (void* buffer) {
 	volatile register u32 temp;
 	int i;
 	
+	_SCSD_enable_lite();
+	
 	i = BUSY_WAIT_TIMEOUT;
 	while ((REG_SCSD_DATAREAD & SCSD_STS_BUSY) && (--i));
 	if (i == 0) {
@@ -329,6 +339,8 @@ bool _SCSD_writeSectors (u32 sector, u32 numSectors, const void* buffer) {
 	int i;
 
 	while (numSectors--) {
+		_SCSD_enable_lite ();
+		
 		// Calculate the CRC16
 		_SD_CRC16 ( data, BYTES_PER_READ, (u8*)crc);
 		
