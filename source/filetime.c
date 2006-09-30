@@ -27,6 +27,10 @@
 
 	2006-07-11 - Chishm
 		* Original release
+		
+	2006-09-30 - Chishm
+		* Validity checks performed on the time supplied by the IPC
+		* Cleaned up magic numbers
 */
 
 
@@ -36,12 +40,44 @@
 #include <nds/ipc.h>
 #endif
 
+#define HOUR_PM_INDICATOR 40
+
+#define MAX_HOUR 23
+#define MAX_MINUTE 59
+#define MAX_SECOND 59
+
+#define MAX_YEAR 99
+#define MAX_MONTH 12
+#define MIN_MONTH 1
+#define MAX_DAY 31
+#define MIN_DAY 1
+
+// Second values are averages, so time value won't be 100% accurate,
+// but should be within the correct month.
+#define SECONDS_PER_MINUTE 60
+#define SECONDS_PER_HOUR 3600
+#define SECONDS_PER_DAY 86400
+#define SECONDS_PER_MONTH 2629743
+#define SECONDS_PER_YEAR 31556926
+
 u16 _FAT_filetime_getTimeFromRTC (void) {
 #ifdef NDS
+	int hour, minute, second;
+	hour = (IPC->rtc_hours >= HOUR_PM_INDICATOR ? IPC->rtc_hours - HOUR_PM_INDICATOR : IPC->rtc_hours);
+	minute = IPC->rtc_minutes;
+	second = IPC->rtc_seconds;
+	
+	// Check that the values are all in range.
+	// If they are not, return 0 (no timestamp)
+	if ((hour < 0) | (hour > MAX_HOUR))	return 0;
+	if ((minute < 0) | (minute > MAX_MINUTE)) return 0;
+	if ((second < 0) | (second > MAX_SECOND)) return 0;
+	
 	return (
-		( ( (IPC->rtc_hours > 11 ? IPC->rtc_hours - 40 : IPC->rtc_hours) & 0x1F) << 11) |
-		( (IPC->rtc_minutes & 0x3F) << 5) |
-		( (IPC->rtc_seconds >> 1) & 0x1F) );
+		((hour & 0x1F) << 11) |
+		((minute & 0x3F) << 5) |
+		((second >> 1) & 0x1F) 
+	);
 #else
 	return 0;
 #endif
@@ -50,10 +86,21 @@ u16 _FAT_filetime_getTimeFromRTC (void) {
 
 u16 _FAT_filetime_getDateFromRTC (void) {
 #ifdef NDS
+	int year, month, day;
+	
+	year = IPC->rtc_year;
+	month = IPC->rtc_month;
+	day = IPC->rtc_day;
+	
+	if ((year < 0) | (year > MAX_YEAR)) return 0;
+	if ((month < MIN_MONTH) | (month > MAX_MONTH)) return 0;
+	if ((day < MIN_DAY) | (day > MAX_DAY)) return 0;
+	
 	return ( 
-		( ((IPC->rtc_year + 20) & 0x7F) <<9) |
-		( (IPC->rtc_month & 0xF) << 5) |
-		(IPC->rtc_day & 0x1F) );
+		(((year + 20) & 0x7F) <<9) |	// Adjust for MS-FAT base year (1980 vs 2000 for DS clock)
+		((month & 0xF) << 5) |
+		(day & 0x1F)
+	);
 #else
 	return 0;
 #endif
@@ -76,11 +123,11 @@ time_t _FAT_filetime_to_time_t (u16 time, u16 date) {
 	// Second values are averages, so time value won't be 100% accurate,
 	// but should be within the correct month.
 	result 	= second
-			+ minute * 60
-			+ hour * 3600
-			+ day * 86400
-			+ month * 2629743
-			+ year * 31556926
+			+ minute * SECONDS_PER_MINUTE
+			+ hour * SECONDS_PER_HOUR
+			+ day * SECONDS_PER_DAY
+			+ month * SECONDS_PER_MONTH
+			+ year * SECONDS_PER_YEAR
 			;
 
 	return result;
