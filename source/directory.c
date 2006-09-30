@@ -34,6 +34,9 @@
 	
 	2006-08-19 - Chishm 
 		* Fixed entryFromPath bug when looking for "." in root directory
+		
+	2006-10-01 - Chishm
+		* Now clears the whole new cluster when linking in more clusters for a directory
 */
 
 #include <string.h>
@@ -201,7 +204,7 @@ static bool _FAT_directory_incrementDirEntryPosition (PARTITION* partition, DIR_
 			tempCluster = _FAT_fat_nextCluster(partition, position.cluster);
 			if (tempCluster == CLUSTER_EOF) {
 				if (extendDirectory) {
-					tempCluster = _FAT_fat_linkFreeCluster (partition, position.cluster);
+					tempCluster = _FAT_fat_linkFreeClusterCleared (partition, position.cluster);
 					if (tempCluster == CLUSTER_FREE) {
 						return false;	// This will only happen if the disc is full
 					}

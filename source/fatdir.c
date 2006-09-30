@@ -36,6 +36,9 @@
 
 	2006-08-19 - Chishm
 		* Updated dirnext return values to return correctly
+		
+	2006-10-01 - Chishm
+		* Now clears the whole cluster when creating a new directory, bug found by Hermes
 */
 
 #include <string.h>
@@ -382,7 +385,7 @@ int _FAT_mkdir_r (struct _reent *r, const char *path, int mode) {
 	dirEntry.entryData[DIR_ENTRY_attributes] = ATTRIB_DIR;
 	
 	// Get a cluster for the new directory
-	dirCluster = _FAT_fat_linkFreeCluster (partition, CLUSTER_FREE);
+	dirCluster = _FAT_fat_linkFreeClusterCleared (partition, CLUSTER_FREE);
 	if (dirCluster == CLUSTER_FREE) {
 		// No space left on disc for the cluster
 		r->_errno = ENOSPC;
@@ -418,7 +421,6 @@ int _FAT_mkdir_r (struct _reent *r, const char *path, int mode) {
 	// Write it to the directory
 	_FAT_cache_writePartialSector ( partition->cache, newEntryData, 
 		_FAT_fat_clusterToSector (partition, dirCluster), DIR_ENTRY_DATA_SIZE, DIR_ENTRY_DATA_SIZE);
-
 
 	// Flush any sectors in the disc cache
 	if (!_FAT_cache_flush(partition->cache)) {
