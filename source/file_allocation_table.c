@@ -31,11 +31,15 @@
 		
 	2006-07-11 - Chishm
 		* Made several fixes related to free clusters, thanks to Loopy
+		
+	2006-10-01 - Chishm
+		* Added _FAT_fat_linkFreeClusterCleared to clear a cluster when it is allocated
 */
 
 
 #include "file_allocation_table.h"
 #include "partition.h"
+#include <string.h>
 
 /*
 Gets the cluster linked from input cluster
@@ -255,6 +259,36 @@ u32 _FAT_fat_linkFreeCluster(PARTITION* partition, u32 cluster) {
 
 	return firstFree;
 }
+
+/*-----------------------------------------------------------------
+gets the first available free cluster, sets it
+to end of file, links the input cluster to it, clears the new
+cluster to 0 valued bytes, then returns the cluster number
+If an error occurs, return CLUSTER_FREE
+-----------------------------------------------------------------*/
+u32 _FAT_fat_linkFreeClusterCleared (PARTITION* partition, u32 cluster) {
+	u32 newCluster;
+	int i;
+	u8 emptySector[BYTES_PER_READ];
+	
+	// Link the cluster
+	newCluster = _FAT_fat_linkFreeCluster(partition, cluster);
+
+	if (newCluster == CLUSTER_FREE) {
+		return CLUSTER_FREE;
+	}
+
+	// Clear all the sectors within the cluster
+	memset (emptySector, 0, BYTES_PER_READ);
+	for (i = 0; i < partition->sectorsPerCluster; i++) {
+		_FAT_disc_writeSectors (partition->disc, 
+			_FAT_fat_clusterToSector (partition, newCluster) + i,
+			1, emptySector);
+	}
+	
+	return newCluster;
+}
+	
 
 /*-----------------------------------------------------------------
 _FAT_fat_clearLinks

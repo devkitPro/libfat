@@ -28,6 +28,9 @@
 
 	2006-07-11 - Chishm
 		* Original release
+
+	2006-10-01 - Chishm
+		* Added _FAT_fat_linkFreeClusterCleared to clear a cluster when it is allocated
 */
 
 #ifndef _FAT_H
@@ -48,6 +51,7 @@
 u32 _FAT_fat_nextCluster(PARTITION* partition, u32 cluster);
 
 u32 _FAT_fat_linkFreeCluster(PARTITION* partition, u32 cluster);
+u32 _FAT_fat_linkFreeClusterCleared (PARTITION* partition, u32 cluster);
 
 bool _FAT_fat_clearLinks (PARTITION* partition, u32 cluster);
 
