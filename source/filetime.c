@@ -31,6 +31,9 @@
 	2006-09-30 - Chishm
 		* Validity checks performed on the time supplied by the IPC
 		* Cleaned up magic numbers
+		
+	2006-10-01 - Chishm
+		* Fixed incorrect use of bitwise-or instead of logical-or
 */
 
 
@@ -47,6 +50,7 @@
 #define MAX_SECOND 59
 
 #define MAX_YEAR 99
+#define MIN_YEAR 6		// The date is invalid if it's before this year
 #define MAX_MONTH 12
 #define MIN_MONTH 1
 #define MAX_DAY 31
@@ -69,9 +73,9 @@ u16 _FAT_filetime_getTimeFromRTC (void) {
 	
 	// Check that the values are all in range.
 	// If they are not, return 0 (no timestamp)
-	if ((hour < 0) | (hour > MAX_HOUR))	return 0;
-	if ((minute < 0) | (minute > MAX_MINUTE)) return 0;
-	if ((second < 0) | (second > MAX_SECOND)) return 0;
+	if ((hour < 0) || (hour > MAX_HOUR))	return 0;
+	if ((minute < 0) || (minute > MAX_MINUTE)) return 0;
+	if ((second < 0) || (second > MAX_SECOND)) return 0;
 	
 	return (
 		((hour & 0x1F) << 11) |
@@ -92,9 +96,9 @@ u16 _FAT_filetime_getDateFromRTC (void) {
 	month = IPC->rtc_month;
 	day = IPC->rtc_day;
 	
-	if ((year < 0) | (year > MAX_YEAR)) return 0;
-	if ((month < MIN_MONTH) | (month > MAX_MONTH)) return 0;
-	if ((day < MIN_DAY) | (day > MAX_DAY)) return 0;
+	if ((year < MIN_YEAR) || (year > MAX_YEAR)) return 0;
+	if ((month < MIN_MONTH) || (month > MAX_MONTH)) return 0;
+	if ((day < MIN_DAY) || (day > MAX_DAY)) return 0;
 	
 	return ( 
 		(((year + 20) & 0x7F) <<9) |	// Adjust for MS-FAT base year (1980 vs 2000 for DS clock)
