@@ -37,6 +37,9 @@
 		
 	2006-10-01 - Chishm
 		* Now clears the whole new cluster when linking in more clusters for a directory
+		
+	2006-10-28 - Chishm
+		* stat returns the hostType for the st_dev value
 */
 
 #include <string.h>
@@ -867,7 +870,7 @@ bool _FAT_directory_chdir (PARTITION* partition, const char* path) {
 void _FAT_directory_entryStat (PARTITION* partition, DIR_ENTRY* entry, struct stat *st) {
 	// Fill in the stat struct
 	// Some of the values are faked for the sake of compatibility
-	st->st_dev = (int)partition;					// The device is the partition pointer
+	st->st_dev = _FAT_disc_hostType(partition->disc);					// The device is the 32bit ioType value
   	st->st_ino = (ino_t)(_FAT_directory_entryGetCluster(entry->entryData));		// The file serial number is the start cluster
 	st->st_mode = (_FAT_directory_isDirectory(entry) ? S_IFDIR : S_IFREG) |
 		(S_IRUSR | S_IRGRP | S_IROTH) |
