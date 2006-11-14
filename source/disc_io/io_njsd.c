@@ -484,10 +484,10 @@ bool _NJSD_readSectors (u32 sector, u32 numSectors, void* buffer) {
 		_NJSD_sendCMDR (_NJSD_speed, NULL, SD_RSP_DATA, READ_MULTIPLE_BLOCK, sector * BYTES_PER_READ);
 		for (i = 0; i < numSectors - 2; i++) {
 			if (((int)buffer & 0x03) != 0){
-				cardPolledTransfer (0xA1406000, tmp, BYTES_PER_READ, (u8*)_NJSD_read_cmd);
+				cardPolledTransfer (0xA1406000, tmp, BYTES_PER_READ, _NJSD_read_cmd);
 				memcpy (tbuf + i * BYTES_PER_READ, tmp, BYTES_PER_READ);
 			} else {
-				cardPolledTransfer (0xA1406000, (u32*)(tbuf + i * BYTES_PER_READ), BYTES_PER_READ,(u8*)_NJSD_read_cmd);
+				cardPolledTransfer (0xA1406000, (u32*)(tbuf + i * BYTES_PER_READ), BYTES_PER_READ, _NJSD_read_cmd);
 			}
 			if (!_NJSD_waitIRQ ()) {
 #ifdef _NJSD_SYNC
@@ -497,10 +497,10 @@ bool _NJSD_readSectors (u32 sector, u32 numSectors, void* buffer) {
 			}
 		}
 		if (((int)buffer & 0x03) != 0){
-			cardPolledTransfer (0xA1406000, tmp, BYTES_PER_READ, (u8*)_NJSD_read_end_cmd);
+			cardPolledTransfer (0xA1406000, tmp, BYTES_PER_READ, _NJSD_read_end_cmd);
 			memcpy (tbuf + (numSectors - 2) * BYTES_PER_READ, tmp, BYTES_PER_READ);
 		} else {
-			cardPolledTransfer (0xA1406000, (u32*)(tbuf + (numSectors - 2) * BYTES_PER_READ), BYTES_PER_READ, (u8*)_NJSD_read_end_cmd);
+			cardPolledTransfer (0xA1406000, (u32*)(tbuf + (numSectors - 2) * BYTES_PER_READ), BYTES_PER_READ, _NJSD_read_end_cmd);
 		}
 		if (!_NJSD_waitIRQ ()) {
 #ifdef _NJSD_SYNC
@@ -510,18 +510,18 @@ bool _NJSD_readSectors (u32 sector, u32 numSectors, void* buffer) {
 		}
 		
 		if (((int)buffer & 0x03) != 0){
-			cardPolledTransfer (0xA1406000, tmp, BYTES_PER_READ, (u8*)_NJSD_read_cmd);
+			cardPolledTransfer (0xA1406000, tmp, BYTES_PER_READ, _NJSD_read_cmd);
 			memcpy (tbuf + (numSectors - 1) * BYTES_PER_READ, tmp, BYTES_PER_READ);
 		} else {
-			cardPolledTransfer (0xA1406000, (u32*)(tbuf + (numSectors - 1) * BYTES_PER_READ), BYTES_PER_READ, (u8*)_NJSD_read_cmd);
+			cardPolledTransfer (0xA1406000, (u32*)(tbuf + (numSectors - 1) * BYTES_PER_READ), BYTES_PER_READ, _NJSD_read_cmd);
 		}
 	} else {
 		_NJSD_sendCMDR (_NJSD_speed, NULL, SD_RSP_STREAM, READ_SINGLE_BLOCK, sector * BYTES_PER_READ);
 		if (((int)buffer & 0x03) != 0){
-			cardPolledTransfer (0xA1406000, tmp, BYTES_PER_READ, (u8*)_NJSD_read_cmd);
+			cardPolledTransfer (0xA1406000, tmp, BYTES_PER_READ, _NJSD_read_cmd);
 			memcpy (tbuf, tmp, BYTES_PER_READ);
 		} else {
-			cardPolledTransfer (0xA1406000, (u32*)tbuf, BYTES_PER_READ, (u8*)_NJSD_read_cmd);
+			cardPolledTransfer (0xA1406000, (u32*)tbuf, BYTES_PER_READ, _NJSD_read_cmd);
 		}
 	}
 
