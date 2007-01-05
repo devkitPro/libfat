@@ -68,6 +68,9 @@
 	2006-12-25 - Chishm
 		* Added DLDI
 		* Removed experimental interfaces
+		
+	2007-05-01 - Chishm
+		* Removed FCSR
 */
 
 #include "disc.h"
@@ -87,7 +90,6 @@
 #include "io_sccf.h"
 #include "io_scsd.h"
 #include "io_m3sd.h"
-#include "io_fcsr.h"
 
 const IO_INTERFACE* ioInterfaces[] = {
 	&_io_dldi,		// Reserved for new interfaces
@@ -96,7 +98,7 @@ const IO_INTERFACE* ioInterfaces[] = {
 	&_io_njsd, &_io_nmmc,
 #endif
 	// Place Slot 2 (GBA Cart) interfaces here
-	&_io_mpcf, &_io_m3cf, &_io_sccf, &_io_scsd, &_io_m3sd, &_io_fcsr
+	&_io_mpcf, &_io_m3cf, &_io_sccf, &_io_scsd, &_io_m3sd
 };
 
 /*
