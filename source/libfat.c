@@ -33,6 +33,9 @@
 		
 	2006-08-14 - Chishm
 		* Added extended devoptab_t functions
+		
+	2007-01-10 - Chishm
+		* fatInit now sets the correct path when setAsDefaultDevice
 */
 
 #include <sys/iosupport.h>
@@ -101,7 +104,7 @@ bool fatInit (u32 cacheSize, bool setAsDefaultDevice) {
 	AddDevice (&dotab_fat);
 	
 	if (setAsDefaultDevice) {
-		setDefaultDevice( FindDevice ("fat:") );
+		chdir ("fat:/");
 	}
 	
 	return true;
