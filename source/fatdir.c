@@ -45,6 +45,7 @@
 #include <errno.h>
 #include <ctype.h>
 #include <unistd.h>
+#include <sys/dir.h>
 
 #include "fatdir.h"
 
@@ -431,9 +432,9 @@ int _FAT_mkdir_r (struct _reent *r, const char *path, int mode) {
 	return 0;
 }
 
-dir_iter_t* _FAT_diropen_r(struct _reent *r, dir_iter_t *dirState, const char *path) {
+DIR_ITER* _FAT_diropen_r(struct _reent *r, DIR_ITER *dirState, const char *path) {
 	DIR_ENTRY dirEntry;
-	DIR_STATE_STRUCT* state = (DIR_STATE_STRUCT*) dirState;
+	DIR_STATE_STRUCT* state = (DIR_STATE_STRUCT*) (dirState->dirStruct);
 	bool fileExists;
 	
 	state->partition = _FAT_partition_getPartitionFromPath (path);
@@ -474,11 +475,11 @@ dir_iter_t* _FAT_diropen_r(struct _reent *r, dir_iter_t *dirState, const char *p
 	
 	// We are now using this entry
 	state->inUse = true;
-	return (dir_iter_t*) state;
+	return (DIR_ITER*) state;
 }
 
-int _FAT_dirreset_r (struct _reent *r, dir_iter_t *dirState) {
-	DIR_STATE_STRUCT* state = (DIR_STATE_STRUCT*) dirState;
+int _FAT_dirreset_r (struct _reent *r, DIR_ITER *dirState) {
+	DIR_STATE_STRUCT* state = (DIR_STATE_STRUCT*) (dirState->dirStruct);
 
 	// Make sure we are still using this entry
 	if (!state->inUse) {
@@ -493,8 +494,8 @@ int _FAT_dirreset_r (struct _reent *r, dir_iter_t *dirState) {
 	return 0;
 }
 
-int _FAT_dirnext_r (struct _reent *r, dir_iter_t *dirState, char *filename, struct stat *filestat) {
-	DIR_STATE_STRUCT* state = (DIR_STATE_STRUCT*) dirState;
+int _FAT_dirnext_r (struct _reent *r, DIR_ITER *dirState, char *filename, struct stat *filestat) {
+	DIR_STATE_STRUCT* state = (DIR_STATE_STRUCT*) (dirState->dirStruct);
 
 	// Make sure we are still using this entry
 	if (!state->inUse) {
@@ -521,8 +522,8 @@ int _FAT_dirnext_r (struct _reent *r, dir_iter_t *dirState, char *filename, stru
 	return 1;
 }
 
-int _FAT_dirclose_r (struct _reent *r, dir_iter_t *dirState) {
-	DIR_STATE_STRUCT* state = (DIR_STATE_STRUCT*) dirState;
+int _FAT_dirclose_r (struct _reent *r, DIR_ITER *dirState) {
+	DIR_STATE_STRUCT* state = (DIR_STATE_STRUCT*) (dirState->dirStruct);
 	
 	// We are no longer using this entry
 	state->inUse = false;

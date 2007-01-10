@@ -68,10 +68,10 @@ extern int _FAT_mkdir_r (struct _reent *r, const char *path, int mode);
 /*
 Directory iterator functions
 */
-extern dir_iter_t* _FAT_diropen_r(struct _reent *r, dir_iter_t *dirState, const char *path);
-extern int _FAT_dirreset_r (struct _reent *r, dir_iter_t *dirState);
-extern int _FAT_dirnext_r (struct _reent *r, dir_iter_t *dirState, char *filename, struct stat *filestat);
-extern int _FAT_dirclose_r (struct _reent *r, dir_iter_t *dirState);
+extern DIR_ITER* _FAT_diropen_r(struct _reent *r, DIR_ITER *dirState, const char *path);
+extern int _FAT_dirreset_r (struct _reent *r, DIR_ITER *dirState);
+extern int _FAT_dirnext_r (struct _reent *r, DIR_ITER *dirState, char *filename, struct stat *filestat);
+extern int _FAT_dirclose_r (struct _reent *r, DIR_ITER *dirState);
 
 
 #endif // _FATDIR_H
