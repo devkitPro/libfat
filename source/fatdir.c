@@ -39,6 +39,9 @@
 		
 	2006-10-01 - Chishm
 		* Now clears the whole cluster when creating a new directory, bug found by Hermes
+		
+	2007-01-10 - Chishm
+		* Updated directory iterator functions for DevkitPro r20
 */
 
 #include <string.h>

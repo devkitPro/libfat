@@ -33,6 +33,9 @@
 		
 	2006-08-14 - Chishm
 		* Added directory iterator functions
+		
+	2007-01-10 - Chishm
+		* Updated directory iterator functions for DevkitPro r20
 */
 
 
