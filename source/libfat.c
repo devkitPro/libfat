@@ -36,9 +36,13 @@
 		
 	2007-01-10 - Chishm
 		* fatInit now sets the correct path when setAsDefaultDevice
+		
+	2007-01-11 - Chishm
+		* Added missing #include <unistd.h>
 */
 
 #include <sys/iosupport.h>
+#include <unistd.h>
 
 #include "common.h"
 #include "partition.h"
