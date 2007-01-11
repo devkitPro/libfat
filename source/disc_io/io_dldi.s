@@ -9,6 +9,8 @@
 .equ FEATURE_SLOT_NDS,				0x00000020
 
 
+_dldi_start:
+
 @---------------------------------------------------------------------------------
 @ Driver patch file standard header -- 16 bytes
 	.word	0xBF8DA5ED		@ Magic number to identify this region
@@ -26,8 +28,8 @@
 @---------------------------------------------------------------------------------
 @ Offsets to important sections within the data	-- 32 bytes
 	.align	6
-	.word   0x00000000		@ data start
-	.word   0x00000000		@ data end
+	.word   _dldi_start		@ data start
+	.word   _dldi_end		@ data end
 	.word	0x00000000		@ Interworking glue start	-- Needs address fixing
 	.word	0x00000000		@ Interworking glue end
 	.word   0x00000000		@ GOT start					-- Needs address fixing
@@ -66,5 +68,6 @@ _DLDI_shutdown:
 
 .space 32632						@ Fill to 32KiB
 
+_dldi_end:
 	.end
 @---------------------------------------------------------------------------------
