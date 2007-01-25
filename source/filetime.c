@@ -67,9 +67,9 @@
 u16 _FAT_filetime_getTimeFromRTC (void) {
 #ifdef NDS
 	int hour, minute, second;
-	hour = (IPC->rtc_hours >= HOUR_PM_INDICATOR ? IPC->rtc_hours - HOUR_PM_INDICATOR : IPC->rtc_hours);
-	minute = IPC->rtc_minutes;
-	second = IPC->rtc_seconds;
+	hour = (IPC->time.rtc.hours >= HOUR_PM_INDICATOR ? IPC->time.rtc.hours - HOUR_PM_INDICATOR : IPC->time.rtc.hours);
+	minute = IPC->time.rtc.minutes;
+	second = IPC->time.rtc.seconds;
 	
 	// Check that the values are all in range.
 	// If they are not, return 0 (no timestamp)
@@ -92,9 +92,9 @@ u16 _FAT_filetime_getDateFromRTC (void) {
 #ifdef NDS
 	int year, month, day;
 	
-	year = IPC->rtc_year;
-	month = IPC->rtc_month;
-	day = IPC->rtc_day;
+	year = IPC->time.rtc.year;
+	month = IPC->time.rtc.month;
+	day = IPC->time.rtc.day;
 	
 	if ((year < MIN_YEAR) || (year > MAX_YEAR)) return 0;
 	if ((month < MIN_MONTH) || (month > MAX_MONTH)) return 0;
