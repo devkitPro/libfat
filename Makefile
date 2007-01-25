@@ -10,7 +10,10 @@ default: release
 
 all: release dist
 
-release:
+lib:
+	@[ -d $@ ] || mkdir -p $@
+
+release: lib
 	make -C nds BUILD=release
 	make -C gba BUILD=release
 
@@ -22,7 +25,7 @@ clean:
 	make -C nds clean
 	make -C gba clean
 
-dist-bin: distribute/$(DATESTRING)
+dist-bin: release distribute/$(DATESTRING)
 	make -C nds dist-bin
 	make -C gba dist-bin
 
