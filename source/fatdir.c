@@ -508,7 +508,8 @@ int _FAT_dirnext_r (struct _reent *r, DIR_ITER *dirState, char *filename, struct
 	
 	// Make sure there is another file to report on
 	if (! state->validEntry) {
-		return 0;
+		r->_errno = ENOENT;
+		return -1;
 	}
 
 	// Get the filename
@@ -522,7 +523,7 @@ int _FAT_dirnext_r (struct _reent *r, DIR_ITER *dirState, char *filename, struct
 	state->validEntry = 
 		_FAT_directory_getNextEntry (state->partition, &(state->currentEntry));
 
-	return 1;
+	return 0;
 }
 
 int _FAT_dirclose_r (struct _reent *r, DIR_ITER *dirState) {
