@@ -113,10 +113,7 @@ const IO_INTERFACE* _FAT_disc_gbaSlotFindInterface (void)
 	// the GBA cart. First implemented by SaTa.
 #ifdef NDS
  #ifdef ARM9
-	WAIT_CR &= ~ARM9_OWNS_ROM;
- #endif
- #ifdef ARM7
-	WAIT_CR |= ARM9_OWNS_ROM;
+	sysSetCartOwner(BUS_OWNER_ARM9);
  #endif
 #endif
 
@@ -140,10 +137,7 @@ const IO_INTERFACE* _FAT_disc_gbaSlotFindInterface (void)
 const IO_INTERFACE* _FAT_disc_dsSlotFindInterface (void)
 {
 #ifdef ARM9
-	WAIT_CR &= ~ARM9_OWNS_CARD;
-#endif
-#ifdef ARM7
-	WAIT_CR |= ARM9_OWNS_CARD;
+	sysSetCardOwner(BUS_OWNER_ARM9);
 #endif
 	int i;
 
@@ -169,10 +163,7 @@ const IO_INTERFACE* _FAT_disc_dsSlotFindInterface (void)
 const IO_INTERFACE* _FAT_disc_findInterface (void)
 {
 #ifdef ARM9
-	WAIT_CR &= ~(ARM9_OWNS_CARD | ARM9_OWNS_ROM);
-#endif
-#ifdef ARM7
-	WAIT_CR |= (ARM9_OWNS_CARD | ARM9_OWNS_ROM);
+	sysSetBusOwners(BUS_OWNER_ARM9, BUS_OWNER_ARM9);
 #endif
 
 	int i;
