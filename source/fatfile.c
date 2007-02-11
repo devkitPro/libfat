@@ -39,6 +39,9 @@
 
 	2006-08-13 - Chishm
 		* Moved all externally visible directory related functions to fatdir
+		
+	2007-02-11 - Chishm
+		* Propagate disc errors up to the user app
 */
 
 
@@ -348,16 +351,21 @@ int _FAT_read_r (struct _reent *r, int fd, char *ptr, int len) {
 	}
 
 	if ((tempVar > 0) && flagNoError) {
-		_FAT_disc_readSectors (partition->disc, _FAT_fat_clusterToSector (partition, position.cluster) + position.sector,
-			tempVar, ptr);
-		ptr += tempVar * BYTES_PER_READ;
-		remain -= tempVar * BYTES_PER_READ;
-		position.sector += tempVar;
+		if (! _FAT_disc_readSectors (partition->disc, _FAT_fat_clusterToSector (partition, position.cluster) + position.sector,
+			tempVar, ptr)) 
+		{
+			flagNoError = false;
+			r->_errno = EIO;
+		} else {
+			ptr += tempVar * BYTES_PER_READ;
+			remain -= tempVar * BYTES_PER_READ;
+			position.sector += tempVar;
+		}
 	}
 	
 	// Move onto next cluster
 	// It should get to here without reading anything if a cluster is due to be allocated
-	if (position.sector >= partition->sectorsPerCluster) {
+	if ((position.sector >= partition->sectorsPerCluster) && flagNoError) {
 		tempNextCluster = _FAT_fat_nextCluster(partition, position.cluster);
 		if ((remain == 0) && (tempNextCluster == CLUSTER_EOF)) {
 			position.sector = partition->sectorsPerCluster;
@@ -372,7 +380,14 @@ int _FAT_read_r (struct _reent *r, int fd, char *ptr, int len) {
 
 	// Read in whole clusters
 	while ((remain >= partition->bytesPerCluster) && flagNoError) {
-		_FAT_disc_readSectors (partition->disc, _FAT_fat_clusterToSector (partition, position.cluster), partition->sectorsPerCluster, ptr);
+		if ( !_FAT_disc_readSectors (
+				partition->disc, _FAT_fat_clusterToSector (partition, position.cluster),
+				partition->sectorsPerCluster, ptr)) 
+		{
+			flagNoError = false;
+			r->_errno = EIO;
+			break;
+		}
 		ptr += partition->bytesPerCluster;
 		remain -= partition->bytesPerCluster;
 
@@ -392,11 +407,16 @@ int _FAT_read_r (struct _reent *r, int fd, char *ptr, int len) {
 	// Read remaining sectors
 	tempVar = remain / BYTES_PER_READ; // Number of sectors left
 	if ((tempVar > 0) && flagNoError) {
-		_FAT_disc_readSectors (partition->disc, _FAT_fat_clusterToSector (partition, position.cluster),
-			tempVar, ptr);
-		ptr += tempVar * BYTES_PER_READ;
-		remain -= tempVar * BYTES_PER_READ;
-		position.sector += tempVar;
+		if (!_FAT_disc_readSectors (partition->disc, _FAT_fat_clusterToSector (partition, position.cluster),
+			tempVar, ptr))
+		{
+			flagNoError = false;
+			r->_errno = EIO;
+		} else {
+			ptr += tempVar * BYTES_PER_READ;
+			remain -= tempVar * BYTES_PER_READ;
+			position.sector += tempVar;
+		}
 	}
 
 	// Last remaining sector
@@ -526,7 +546,7 @@ int _FAT_write_r (struct _reent *r,int fd, const char *ptr, int len) {
 	// Make sure we can actually write to the file
 	if ((file == NULL) || !file->inUse || !file->write) {
 		r->_errno = EBADF;
-		return -1;
+		return 0;
 	}
 	
 	partition = file->partition;
@@ -602,11 +622,16 @@ int _FAT_write_r (struct _reent *r,int fd, const char *ptr, int len) {
 	}
 
 	if ((tempVar > 0) && flagNoError) {
-		_FAT_disc_writeSectors (partition->disc, 
-			_FAT_fat_clusterToSector (partition, position.cluster) + position.sector, tempVar, ptr);
-		ptr += tempVar * BYTES_PER_READ;
-		remain -= tempVar * BYTES_PER_READ;
-		position.sector += tempVar;
+		if (!_FAT_disc_writeSectors (partition->disc, 
+			_FAT_fat_clusterToSector (partition, position.cluster) + position.sector, tempVar, ptr))
+		{
+			flagNoError = false;
+			r->_errno = EIO;
+		} else {
+			ptr += tempVar * BYTES_PER_READ;
+			remain -= tempVar * BYTES_PER_READ;
+			position.sector += tempVar;
+		}
 	}
 
 	if ((position.sector >= partition->sectorsPerCluster) && flagNoError && (remain > 0)) {
@@ -627,8 +652,13 @@ int _FAT_write_r (struct _reent *r,int fd, const char *ptr, int len) {
 
 	// Write whole clusters
 	while ((remain >= partition->bytesPerCluster) && flagNoError) {
-		_FAT_disc_writeSectors (partition->disc, _FAT_fat_clusterToSector(partition, position.cluster),
-			partition->sectorsPerCluster, ptr);
+		if ( !_FAT_disc_writeSectors (partition->disc, _FAT_fat_clusterToSector(partition, position.cluster),
+			partition->sectorsPerCluster, ptr)) 
+		{
+			flagNoError = false;
+			r->_errno = EIO;
+			break;
+		}
 		ptr += partition->bytesPerCluster;
 		remain -= partition->bytesPerCluster;
 		if (remain > 0) {
@@ -653,11 +683,16 @@ int _FAT_write_r (struct _reent *r,int fd, const char *ptr, int len) {
 	// Write remaining sectors
 	tempVar = remain / BYTES_PER_READ; // Number of sectors left
 	if ((tempVar > 0) && flagNoError) {
-		_FAT_disc_writeSectors (partition->disc, _FAT_fat_clusterToSector (partition, position.cluster), 
-			tempVar, ptr);
-		ptr += tempVar * BYTES_PER_READ;
-		remain -= tempVar * BYTES_PER_READ;
-		position.sector += tempVar;
+		if (!_FAT_disc_writeSectors (partition->disc, _FAT_fat_clusterToSector (partition, position.cluster), 
+			tempVar, ptr))
+		{
+			flagNoError = false;
+			r->_errno = EIO;
+		} else {
+			ptr += tempVar * BYTES_PER_READ;
+			remain -= tempVar * BYTES_PER_READ;
+			position.sector += tempVar;
+		}
 	}
 	
 	// Last remaining sector
