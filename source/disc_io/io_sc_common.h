@@ -28,6 +28,9 @@
 
 	2006-07-11 - Chishm
 		* Original release
+	
+	2007-01-29 - Chishm
+		* Added SC_MODE_FLASH
 */
 
 #ifndef IO_SC_COMMON_H
@@ -36,6 +39,7 @@
 #include "disc_io.h"
 
 // Values for changing mode
+#define SC_MODE_FLASH 0x1510
 #define SC_MODE_RAM 0x5
 #define SC_MODE_MEDIA 0x3 
 #define SC_MODE_RAM_RO 0x1
