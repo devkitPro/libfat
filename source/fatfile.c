@@ -42,6 +42,9 @@
 		
 	2007-02-11 - Chishm
 		* Propagate disc errors up to the user app
+		
+	2007-02-25 - Chishm
+		* Fixed seek to the end of a file bug
 */
 
 
@@ -458,6 +461,17 @@ static bool file_extend_r (struct _reent *r, FILE_STRUCT* file) {
 	
 	remain = file->currentPosition - file->filesize;
 	
+	if ((remain > 0) && (file->filesize > 0) && (position.sector == 0)) {
+		// Get a new cluster on the edge of a cluster boundary
+		tempNextCluster = _FAT_fat_linkFreeCluster(partition, position.cluster);
+		if (tempNextCluster == CLUSTER_FREE) {
+			// Couldn't get a cluster, so abort
+			r->_errno = ENOSPC;
+			return false;
+		} else {
+			position.cluster = tempNextCluster;
+		}
+	}
 		
 	// Only need to clear to the end of the sector
 	if (remain + position.byte < BYTES_PER_READ) {
@@ -477,11 +491,8 @@ static bool file_extend_r (struct _reent *r, FILE_STRUCT* file) {
 		while (remain >= BYTES_PER_READ) {
 			if (position.sector >= partition->sectorsPerCluster) {
 				position.sector = 0;
-				tempNextCluster = _FAT_fat_nextCluster(partition, position.cluster);
-				if ((tempNextCluster == CLUSTER_EOF) || (tempNextCluster == CLUSTER_FREE)) {
-					// Ran out of clusters so get a new one
-					tempNextCluster = _FAT_fat_linkFreeCluster(partition, position.cluster);
-				} 
+				// Ran out of clusters so get a new one
+				tempNextCluster = _FAT_fat_linkFreeCluster(partition, position.cluster);
 				if (tempNextCluster == CLUSTER_FREE) {
 					// Couldn't get a cluster, so abort
 					r->_errno = ENOSPC;
@@ -772,9 +783,9 @@ int _FAT_seek_r (struct _reent *r, int fd, int pos, int dir) {
 		return -1;
 	}
 	
-	// Only change the read/write position if it is within the bounds of the current filesize
-	if (file->filesize > position) {
-			
+	// Only change the read/write position if it is within the bounds of the current filesize,
+	// or at the very edge of the file
+	if (file->filesize >= position) {
 		// Calculate the sector and byte of the current position,
 		// and store them
 		file->rwPosition.sector = (position % partition->bytesPerCluster) / BYTES_PER_READ;
@@ -797,10 +808,15 @@ int _FAT_seek_r (struct _reent *r, int fd, int pos, int dir) {
 		}
 		
 		// Check if ran out of clusters, and the file is being written to
-		if ((clusCount > 0) && (file->write || file->append)) {
-			// Set flag to allocate a new cluster
-			file->rwPosition.sector = partition->sectorsPerCluster;
-			file->rwPosition.byte = 0;
+		if (clusCount > 0) {
+			if ((clusCount == 1) && (file->filesize == position) && (file->write || file->append) && (file->rwPosition.sector == 0)) {
+				// Set flag to allocate a new cluster
+				file->rwPosition.sector = partition->sectorsPerCluster;
+				file->rwPosition.byte = 0;
+			} else {
+				r->_errno = EINVAL;
+				return -1;
+			}
 		}
 		
 		file->rwPosition.cluster = cluster;
