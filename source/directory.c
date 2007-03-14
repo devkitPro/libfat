@@ -40,6 +40,9 @@
 		
 	2006-10-28 - Chishm
 		* stat returns the hostType for the st_dev value
+		
+	2007-03-14 - Chishm
+		* Check long file names for buffer overflow
 */
 
 #include <string.h>
@@ -55,6 +58,9 @@
 // Directory entry codes
 #define DIR_ENTRY_LAST 0x00
 #define DIR_ENTRY_FREE 0xE5
+
+#define LAST_LFN_POS (19*13)
+#define LAST_LFN_POS_CORRECTION (MAX_FILENAME_LENGTH-15)
 
 
 // Long file name directory entry
@@ -278,13 +284,21 @@ bool _FAT_directory_getNextEntry (PARTITION* partition, DIR_ENTRY* entry) {
 				// Last part of LFN, make sure it isn't deleted using previous if(Thanks MoonLight)
 				entryStart = entryEnd;	// This is the start of a directory entry
 				lfnExists = true;
-				filename[(entryData[LFN_offset_ordinal] & ~LFN_END) * 13] = '\0';	// Set end of lfn to null character
+				lfnPos = (entryData[LFN_offset_ordinal] & ~LFN_END) * 13;
+				if (lfnPos > MAX_FILENAME_LENGTH - 1) {
+					lfnPos = MAX_FILENAME_LENGTH - 1;
+				}
+				filename[lfnPos] = '\0';	// Set end of lfn to null character
 				lfnChkSum = entryData[LFN_offset_checkSum];
 			} if (lfnChkSum != entryData[LFN_offset_checkSum]) {
 				lfnExists = false;
 			}
 			if (lfnExists) {
 				lfnPos = ((entryData[LFN_offset_ordinal] & ~LFN_END) - 1) * 13;
+				if (lfnPos > LAST_LFN_POS) {
+					// Force it within the buffer. Will corrupt the filename but prevent buffer overflows
+					lfnPos = LAST_LFN_POS;
+				}
 				for (i = 0; i < 13; i++) {
 					filename[lfnPos + i] = entryData[LFN_offset_table[i]]; // modify this for unicode support;
 				}
@@ -391,6 +405,9 @@ bool _FAT_directory_entryFromPosition (PARTITION* partition, DIR_ENTRY* entry) {
 		} else {
 			// Copy the long file name data
 			lfnPos = ((entryData[LFN_offset_ordinal] & ~LFN_END) - 1) * 13;
+			if (lfnPos > LAST_LFN_POS) {
+				lfnPos = LAST_LFN_POS_CORRECTION;
+			}
 			for (i = 0; i < 13; i++) {
 				entry->filename[lfnPos + i] = entryData[LFN_offset_table[i]]; // modify this for unicode support;
 			}
