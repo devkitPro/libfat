@@ -33,8 +33,8 @@
 #ifndef IO_DLDI_H
 #define IO_DLDI_H
 
-// 'DLDD'
-#define DEVICE_TYPE_DLDD 0x49444C44
+// 'DLDI'
+#define DEVICE_TYPE_DLDI 0x49444C44
 
 #include "disc_io.h"
 
