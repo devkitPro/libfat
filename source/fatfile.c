@@ -45,6 +45,9 @@
 		
 	2007-02-25 - Chishm
 		* Fixed seek to the end of a file bug
+		
+	2007-04-12 - Chishm
+		* Fixed seek to end of file when reading
 */
 
 
@@ -792,7 +795,7 @@ int _FAT_seek_r (struct _reent *r, int fd, int pos, int dir) {
 		file->rwPosition.byte = position % BYTES_PER_READ;
 	
 		// Calculate where the correct cluster is
-		if (position >= file->currentPosition) {
+		if ((position >= file->currentPosition) && (file->rwPosition.sector != partition->sectorsPerCluster)) {
 			clusCount = (position / partition->bytesPerCluster) - (file->currentPosition / partition->bytesPerCluster);
 			cluster = file->rwPosition.cluster;
 		} else {
@@ -807,9 +810,9 @@ int _FAT_seek_r (struct _reent *r, int fd, int pos, int dir) {
 			nextCluster = _FAT_fat_nextCluster (partition, cluster);
 		}
 		
-		// Check if ran out of clusters, and the file is being written to
+		// Check if ran out of clusters and it needs to allocate a new one
 		if (clusCount > 0) {
-			if ((clusCount == 1) && (file->filesize == position) && (file->write || file->append) && (file->rwPosition.sector == 0)) {
+			if ((clusCount == 1) && (file->filesize == position) && (file->rwPosition.sector == 0)) {
 				// Set flag to allocate a new cluster
 				file->rwPosition.sector = partition->sectorsPerCluster;
 				file->rwPosition.byte = 0;
