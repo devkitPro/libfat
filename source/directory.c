@@ -43,6 +43,9 @@
 		
 	2007-03-14 - Chishm
 		* Check long file names for buffer overflow
+		
+	2007-04-22 - Chishm
+		* Added space to list of illegal alias characters - fixes filename creation bug when filename contained a space
 */
 
 #include <string.h>
@@ -89,6 +92,9 @@ const int LFN_offset_table[13]={0x01,0x03,0x05,0x07,0x09,0x0E,0x10,0x12,0x14,0x1
 #define LFN_END 0x40
 #define LFN_DEL 0x80
 
+const char ILLEGAL_ALIAS_CHARACTERS[] = "\\/:;*?\"<>|&+,=[] ";
+const char ILLEGAL_LFN_CHARACTERS[] = "\\/:*?\"<>|";
+
 bool _FAT_directory_isValidLfn (const char* name) {
 	u32 i;
 	u32 nameLength;
@@ -97,7 +103,7 @@ bool _FAT_directory_isValidLfn (const char* name) {
 		return false;
 	}
 	// Make sure it doesn't contain any invalid characters
-	if (strpbrk (name, "\\/:*?\"<>|") != NULL) {
+	if (strpbrk (name, ILLEGAL_LFN_CHARACTERS) != NULL) {
 		return false;
 	}
 	nameLength = strnlen(name, MAX_FILENAME_LENGTH);
@@ -121,7 +127,7 @@ bool _FAT_directory_isValidAlias (const char* name) {
 		return false;
 	}
 	// Make sure it doesn't contain any invalid characters
-	if (strpbrk (name, "\\/:;*?\"<>|&+,=[]") != NULL) {
+	if (strpbrk (name, ILLEGAL_ALIAS_CHARACTERS) != NULL) {
 		return false;
 	}
 	nameLength = strnlen(name, MAX_ALIAS_LENGTH);
