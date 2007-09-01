@@ -42,6 +42,9 @@
 		
 	2007-01-10 - Chishm
 		* Updated directory iterator functions for DevkitPro r20
+	
+	2007-09-01 - Chishm
+		* Use CLUSTER_ERROR when an error occurs with the FAT, not CLUSTER_FREE
 */
 
 #include <string.h>
@@ -153,7 +156,7 @@ int _FAT_unlink_r (struct _reent *r, const char *path) {
 		}
 	}
 
-	if (cluster != CLUSTER_FREE) {
+	if (!_FAT_fat_isValidCluster(partition, cluster)) {
 		// Remove the cluster chain for this file
 		if (!_FAT_fat_clearLinks (partition, cluster)) {
 			r->_errno = EIO;
@@ -390,7 +393,7 @@ int _FAT_mkdir_r (struct _reent *r, const char *path, int mode) {
 	
 	// Get a cluster for the new directory
 	dirCluster = _FAT_fat_linkFreeClusterCleared (partition, CLUSTER_FREE);
-	if (dirCluster == CLUSTER_FREE) {
+	if (!_FAT_fat_isValidCluster(partition, dirCluster)) {
 		// No space left on disc for the cluster
 		r->_errno = ENOSPC;
 		return -1;

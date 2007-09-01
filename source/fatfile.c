@@ -375,7 +375,7 @@ int _FAT_read_r (struct _reent *r, int fd, char *ptr, int len) {
 		tempNextCluster = _FAT_fat_nextCluster(partition, position.cluster);
 		if ((remain == 0) && (tempNextCluster == CLUSTER_EOF)) {
 			position.sector = partition->sectorsPerCluster;
-		} else if (tempNextCluster == CLUSTER_FREE) {
+		} else if (!_FAT_fat_isValidCluster(partition, tempNextCluster)) {
 			r->_errno = EIO;
 			flagNoError = false;
 		} else {
@@ -401,7 +401,7 @@ int _FAT_read_r (struct _reent *r, int fd, char *ptr, int len) {
 		tempNextCluster = _FAT_fat_nextCluster(partition, position.cluster);
 		if ((remain == 0) && (tempNextCluster == CLUSTER_EOF)) {
 			position.sector = partition->sectorsPerCluster;
-		} else if (tempNextCluster == CLUSTER_FREE) {
+		} else if (!_FAT_fat_isValidCluster(partition, tempNextCluster)) {
 			r->_errno = EIO;
 			flagNoError = false;
 		} else {
@@ -467,7 +467,7 @@ static bool file_extend_r (struct _reent *r, FILE_STRUCT* file) {
 	if ((remain > 0) && (file->filesize > 0) && (position.sector == 0)) {
 		// Get a new cluster on the edge of a cluster boundary
 		tempNextCluster = _FAT_fat_linkFreeCluster(partition, position.cluster);
-		if (tempNextCluster == CLUSTER_FREE) {
+		if (!_FAT_fat_isValidCluster(partition, tempNextCluster)) {
 			// Couldn't get a cluster, so abort
 			r->_errno = ENOSPC;
 			return false;
@@ -496,7 +496,7 @@ static bool file_extend_r (struct _reent *r, FILE_STRUCT* file) {
 				position.sector = 0;
 				// Ran out of clusters so get a new one
 				tempNextCluster = _FAT_fat_linkFreeCluster(partition, position.cluster);
-				if (tempNextCluster == CLUSTER_FREE) {
+				if (!_FAT_fat_isValidCluster(partition, tempNextCluster)) {
 					// Couldn't get a cluster, so abort
 					r->_errno = ENOSPC;
 					return false;
@@ -519,7 +519,7 @@ static bool file_extend_r (struct _reent *r, FILE_STRUCT* file) {
 				// Ran out of clusters so get a new one
 				tempNextCluster = _FAT_fat_linkFreeCluster(partition, position.cluster);
 			} 
-			if (tempNextCluster == CLUSTER_FREE) {
+			if (!_FAT_fat_isValidCluster(partition, tempNextCluster)) {
 				// Couldn't get a cluster, so abort
 				r->_errno = ENOSPC;
 				return false;
@@ -595,7 +595,7 @@ int _FAT_write_r (struct _reent *r,int fd, const char *ptr, int len) {
 			// Ran out of clusters so get a new one
 			tempNextCluster = _FAT_fat_linkFreeCluster(partition, position.cluster);
 		} 
-		if (tempNextCluster == CLUSTER_FREE) {
+		if (!_FAT_fat_isValidCluster(partition, tempNextCluster)) {
 			// Couldn't get a cluster, so abort
 			r->_errno = ENOSPC;
 			flagNoError = false;
@@ -655,7 +655,7 @@ int _FAT_write_r (struct _reent *r,int fd, const char *ptr, int len) {
 			// Ran out of clusters so get a new one
 			tempNextCluster = _FAT_fat_linkFreeCluster(partition, position.cluster);
 		} 
-		if (tempNextCluster == CLUSTER_FREE) {
+		if (!_FAT_fat_isValidCluster(partition, tempNextCluster)) {
 			// Couldn't get a cluster, so abort
 			r->_errno = ENOSPC;
 			flagNoError = false;
@@ -681,7 +681,7 @@ int _FAT_write_r (struct _reent *r,int fd, const char *ptr, int len) {
 				// Ran out of clusters so get a new one
 				tempNextCluster = _FAT_fat_linkFreeCluster(partition, position.cluster);
 			} 
-			if (tempNextCluster == CLUSTER_FREE) {
+			if (!_FAT_fat_isValidCluster(partition, tempNextCluster)) {
 				// Couldn't get a cluster, so abort
 				r->_errno = ENOSPC;
 				flagNoError = false;

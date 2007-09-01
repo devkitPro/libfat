@@ -34,6 +34,9 @@
 		
 	2006-10-01 - Chishm
 		* Added _FAT_fat_linkFreeClusterCleared to clear a cluster when it is allocated
+	
+	2007-09-01 - Chishm
+		* Use CLUSTER_ERROR when an error occurs with the FAT, not CLUSTER_FREE
 */
 
 
@@ -53,7 +56,7 @@ u32 _FAT_fat_nextCluster(PARTITION* partition, u32 cluster)
 	switch (partition->filesysType) 
 	{
 		case FS_UNKNOWN:
-			nextCluster = CLUSTER_FREE;
+			return CLUSTER_ERROR;
 			break;
 			
 		case FS_FAT12:
@@ -110,7 +113,7 @@ u32 _FAT_fat_nextCluster(PARTITION* partition, u32 cluster)
 			break;
 			
 		default:
-			nextCluster = CLUSTER_FREE;
+			return CLUSTER_ERROR;
 			break;
 	}
 	
@@ -126,7 +129,7 @@ static bool _FAT_fat_writeFatEntry (PARTITION* partition, u32 cluster, u32 value
 	int offset;
 	u8 oldValue;
 
-	if ((cluster < 0x0002) || (cluster > partition->fat.lastCluster))
+	if ((cluster < CLUSTER_FIRST) || (cluster > partition->fat.lastCluster /* This will catch CLUSTER_ERROR */))
 	{
 		return false;
 	}
@@ -204,7 +207,7 @@ static bool _FAT_fat_writeFatEntry (PARTITION* partition, u32 cluster, u32 value
 gets the first available free cluster, sets it
 to end of file, links the input cluster to it then returns the 
 cluster number
-If an error occurs, return CLUSTER_FREE
+If an error occurs, return CLUSTER_ERROR
 -----------------------------------------------------------------*/
 u32 _FAT_fat_linkFreeCluster(PARTITION* partition, u32 cluster) {
 	u32 firstFree;
@@ -215,7 +218,7 @@ u32 _FAT_fat_linkFreeCluster(PARTITION* partition, u32 cluster) {
 	lastCluster =  partition->fat.lastCluster;
 
 	if (cluster > lastCluster) {
-		return CLUSTER_FREE;
+		return CLUSTER_ERROR;
 	}
 
 	// Check if the cluster already has a link, and return it if so
@@ -236,9 +239,9 @@ u32 _FAT_fat_linkFreeCluster(PARTITION* partition, u32 cluster) {
 		firstFree++;
 		if (firstFree > lastCluster) {
 			if (loopedAroundFAT) {
-				// If couldn't get a free cluster then return, saying this fact
+				// If couldn't get a free cluster then return an error
 				partition->fat.firstFree = firstFree;
-				return CLUSTER_FREE;
+				return CLUSTER_ERROR;
 			} else {
 				// Try looping back to the beginning of the FAT
 				// This was suggested by loopy
@@ -264,7 +267,7 @@ u32 _FAT_fat_linkFreeCluster(PARTITION* partition, u32 cluster) {
 gets the first available free cluster, sets it
 to end of file, links the input cluster to it, clears the new
 cluster to 0 valued bytes, then returns the cluster number
-If an error occurs, return CLUSTER_FREE
+If an error occurs, return CLUSTER_ERROR
 -----------------------------------------------------------------*/
 u32 _FAT_fat_linkFreeClusterCleared (PARTITION* partition, u32 cluster) {
 	u32 newCluster;
@@ -274,8 +277,8 @@ u32 _FAT_fat_linkFreeClusterCleared (PARTITION* partition, u32 cluster) {
 	// Link the cluster
 	newCluster = _FAT_fat_linkFreeCluster(partition, cluster);
 
-	if (newCluster == CLUSTER_FREE) {
-		return CLUSTER_FREE;
+	if (newCluster == CLUSTER_FREE || newCluster == CLUSTER_ERROR) {
+		return CLUSTER_ERROR;
 	}
 
 	// Clear all the sectors within the cluster
@@ -297,7 +300,7 @@ frees any cluster used by a file
 bool _FAT_fat_clearLinks (PARTITION* partition, u32 cluster) {
 	u32 nextCluster;
 	
-	if ((cluster < 0x0002) || (cluster > partition->fat.lastCluster))
+	if ((cluster < CLUSTER_FIRST) || (cluster > partition->fat.lastCluster /* This will catch CLUSTER_ERROR */))
 		return false;
 		
 	// If this clears up more space in the FAT before the current free pointer, move it backwards
@@ -305,7 +308,7 @@ bool _FAT_fat_clearLinks (PARTITION* partition, u32 cluster) {
 		partition->fat.firstFree = cluster;
 	}
 
-	while ((cluster != CLUSTER_EOF) && (cluster != CLUSTER_FREE)) {
+	while ((cluster != CLUSTER_EOF) && (cluster != CLUSTER_FREE) && (cluster != CLUSTER_ERROR)) {
 		// Store next cluster before erasing the link
 		nextCluster = _FAT_fat_nextCluster (partition, cluster);
 

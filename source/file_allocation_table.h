@@ -31,6 +31,9 @@
 
 	2006-10-01 - Chishm
 		* Added _FAT_fat_linkFreeClusterCleared to clear a cluster when it is allocated
+	
+	2007-09-01 - Chishm
+		* Use CLUSTER_ERROR when an error occurs with the FAT, not CLUSTER_FREE
 */
 
 #ifndef _FAT_H
@@ -40,9 +43,10 @@
 #include "partition.h"
 
 #define CLUSTER_EOF_16	0xFFFF
-#define	CLUSTER_EOF	0x0FFFFFFF
-#define CLUSTER_FREE	0x0000
-#define CLUSTER_FIRST	0x0002
+#define	CLUSTER_EOF		0x0FFFFFFF
+#define CLUSTER_FREE	0x00000000
+#define CLUSTER_FIRST	0x00000002
+#define CLUSTER_ERROR	0xFFFFFFFF
 
 #define CLUSTERS_PER_FAT12 4085
 #define CLUSTERS_PER_FAT16 65525
@@ -58,7 +62,11 @@ bool _FAT_fat_clearLinks (PARTITION* partition, u32 cluster);
 u32 _FAT_fat_lastCluster (PARTITION* partition, u32 cluster);
 
 static inline u32 _FAT_fat_clusterToSector (PARTITION* partition, u32 cluster) {
-	return (cluster >= 2) ? ((cluster - 2) * partition->sectorsPerCluster) + partition->dataStart : partition->rootDirStart;
+	return (cluster >= CLUSTER_FIRST) ? ((cluster - CLUSTER_FIRST) * partition->sectorsPerCluster) + partition->dataStart : partition->rootDirStart;
+}
+
+static inline bool _FAT_fat_isValidCluster (PARTITION* partition, u32 cluster) {
+	return (cluster >= CLUSTER_FIRST) && (cluster <= partition->fat.lastCluster /* This will catch CLUSTER_ERROR */);
 }
 
 #endif // _FAT_H

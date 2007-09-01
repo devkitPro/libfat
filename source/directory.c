@@ -46,6 +46,9 @@
 		
 	2007-04-22 - Chishm
 		* Added space to list of illegal alias characters - fixes filename creation bug when filename contained a space
+	
+	2007-09-01 - Chishm
+		* Use CLUSTER_ERROR when an error occurs with the FAT, not CLUSTER_FREE
 */
 
 #include <string.h>
@@ -220,7 +223,7 @@ static bool _FAT_directory_incrementDirEntryPosition (PARTITION* partition, DIR_
 			if (tempCluster == CLUSTER_EOF) {
 				if (extendDirectory) {
 					tempCluster = _FAT_fat_linkFreeClusterCleared (partition, position.cluster);
-					if (tempCluster == CLUSTER_FREE) {
+					if (!_FAT_fat_isValidCluster(partition, tempCluster)) {
 						return false;	// This will only happen if the disc is full
 					}
 				} else {
@@ -606,7 +609,9 @@ static bool _FAT_directory_findEntryGap (PARTITION* partition, DIR_ENTRY* entry,
 	endOfDirectory = false;
 	
 	while (entryStillValid && !endOfDirectory && (dirEntryRemain > 0)) {
-		_FAT_cache_readPartialSector (partition->cache, entryData, _FAT_fat_clusterToSector(partition, gapEnd.cluster) + gapEnd.sector, gapEnd.offset * DIR_ENTRY_DATA_SIZE, DIR_ENTRY_DATA_SIZE);
+		_FAT_cache_readPartialSector (partition->cache, entryData, 
+			_FAT_fat_clusterToSector(partition, gapEnd.cluster) + gapEnd.sector, 
+			gapEnd.offset * DIR_ENTRY_DATA_SIZE, DIR_ENTRY_DATA_SIZE);
 		if (entryData[0] == DIR_ENTRY_LAST) {
 			gapStart = gapEnd;
 			-- dirEntryRemain;
@@ -643,7 +648,9 @@ static bool _FAT_directory_findEntryGap (PARTITION* partition, DIR_ENTRY* entry,
 			entryStillValid = _FAT_directory_incrementDirEntryPosition (partition, &gapEnd, true);
 			-- dirEntryRemain;
 			// Fill the entry with blanks
-			_FAT_cache_writePartialSector (partition->cache, entryData, _FAT_fat_clusterToSector(partition, gapEnd.cluster) + gapEnd.sector, gapEnd.offset * DIR_ENTRY_DATA_SIZE, DIR_ENTRY_DATA_SIZE);
+			_FAT_cache_writePartialSector (partition->cache, entryData,
+				_FAT_fat_clusterToSector(partition, gapEnd.cluster) + gapEnd.sector, 
+				gapEnd.offset * DIR_ENTRY_DATA_SIZE, DIR_ENTRY_DATA_SIZE);
 		}
 		if (!entryStillValid) {
 			return false;
