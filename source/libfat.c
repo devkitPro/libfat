@@ -39,6 +39,9 @@
 		
 	2007-01-11 - Chishm
 		* Added missing #include <unistd.h>
+
+	2007-10-25 - Chishm
+		* Added statvfs functionality
 */
 
 #include <sys/iosupport.h>
@@ -72,7 +75,8 @@ const devoptab_t dotab_fat = {
 	_FAT_diropen_r,
 	_FAT_dirreset_r,
 	_FAT_dirnext_r,
-	_FAT_dirclose_r
+	_FAT_dirclose_r,
+	_FAT_statvfs_r
 };
 
 bool fatInit (u32 cacheSize, bool setAsDefaultDevice) {

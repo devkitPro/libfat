@@ -36,6 +36,9 @@
 		
 	2007-01-10 - Chishm
 		* Updated directory iterator functions for DevkitPro r20
+
+	2007-10-25 - Chishm
+		* Added statvfs functionality
 */
 
 
@@ -44,6 +47,7 @@
 
 #include <sys/reent.h>
 #include <sys/stat.h>
+#include <sys/statvfs.h>
 #include <sys/iosupport.h>
 #include "common.h"
 #include "directory.h"
@@ -67,6 +71,8 @@ extern int _FAT_chdir_r (struct _reent *r, const char *name);
 extern int _FAT_rename_r (struct _reent *r, const char *oldName, const char *newName);
 
 extern int _FAT_mkdir_r (struct _reent *r, const char *path, int mode);
+
+extern int _FAT_statvfs_r (struct _reent *r, const char *path, struct statvfs *buf);
 
 /*
 Directory iterator functions

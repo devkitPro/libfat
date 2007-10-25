@@ -42,9 +42,10 @@
 		
 	2007-01-10 - Chishm
 		* Updated directory iterator functions for DevkitPro r20
-	
-	2007-09-01 - Chishm
+
+	2007-10-25 - Chishm
 		* Use CLUSTER_ERROR when an error occurs with the FAT, not CLUSTER_FREE
+		* Added statvfs functionality
 */
 
 #include <string.h>
@@ -434,6 +435,46 @@ int _FAT_mkdir_r (struct _reent *r, const char *path, int mode) {
 		r->_errno = EIO;
 		return -1;
 	}
+
+	return 0;
+}
+
+int _FAT_statvfs_r (struct _reent *r, const char *path, struct statvfs *buf) 
+{
+	PARTITION* partition = NULL;
+	u32 freeClusterCount;
+
+	// Get the partition of the requested path
+	partition = _FAT_partition_getPartitionFromPath (path);
+	
+	if (partition == NULL) {
+		r->_errno = ENODEV;
+		return -1;
+	}
+
+	freeClusterCount = _FAT_fat_freeClusterCount (partition);
+	
+	// FAT clusters = POSIX blocks
+	buf->f_bsize = partition->bytesPerCluster;		// File system block size. 
+	buf->f_frsize = partition->bytesPerCluster;	// Fundamental file system block size. 
+	
+	buf->f_blocks	= partition->fat.lastCluster - CLUSTER_FIRST; // Total number of blocks on file system in units of f_frsize. 
+	buf->f_bfree = freeClusterCount;	// Total number of free blocks. 
+	buf->f_bavail	= freeClusterCount;	// Number of free blocks available to non-privileged process. 
+
+	// Treat requests for info on inodes as clusters
+	buf->f_files = partition->fat.lastCluster - CLUSTER_FIRST;	// Total number of file serial numbers. 
+	buf->f_ffree = freeClusterCount;	// Total number of free file serial numbers. 
+	buf->f_favail = freeClusterCount;	// Number of file serial numbers available to non-privileged process. 
+	
+	// File system ID. 32bit ioType value
+	buf->f_fsid = _FAT_disc_hostType(partition->disc); 
+	
+	// Bit mask of f_flag values.
+	buf->f_flag = ST_NOSUID /* No support for ST_ISUID and ST_ISGID file mode bits */
+		| (partition->readOnly ? ST_RDONLY /* Read only file system */ : 0 ) ;
+	// Maximum filename length.
+	buf->f_namemax = MAX_FILENAME_LENGTH;	 
 
 	return 0;
 }
