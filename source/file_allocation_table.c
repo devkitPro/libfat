@@ -34,8 +34,8 @@
 		
 	2006-10-01 - Chishm
 		* Added _FAT_fat_linkFreeClusterCleared to clear a cluster when it is allocated
-	
-	2007-09-01 - Chishm
+
+	2007-10-25 - Chishm
 		* Use CLUSTER_ERROR when an error occurs with the FAT, not CLUSTER_FREE
 */
 
@@ -332,3 +332,21 @@ u32 _FAT_fat_lastCluster (PARTITION* partition, u32 cluster) {
 	}
 	return cluster;
 }
+
+/*-----------------------------------------------------------------
+_FAT_fat_freeClusterCount
+Return the number of free clusters available
+-----------------------------------------------------------------*/
+u32 _FAT_fat_freeClusterCount (PARTITION* partition) {
+	u32 count = 0;
+	u32 curCluster;
+	
+	for (curCluster = CLUSTER_FIRST; curCluster <= partition->fat.lastCluster; curCluster++) {
+		if (_FAT_fat_nextCluster(partition, curCluster) == CLUSTER_FREE) {
+			count++;
+		}
+	}
+	
+	return count;
+}
+
