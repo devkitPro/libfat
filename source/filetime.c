@@ -57,7 +57,7 @@ u16 _FAT_filetime_getTimeFromRTC (void) {
 	struct tm timeParts;
 	time_t epochTime;
 	
-	if (time(&epochTime) == (time)-1) {
+	if (time(&epochTime) == (time_t)-1) {
 		return 0;
 	}
 	localtime_r(&epochTime, &timeParts);
@@ -84,7 +84,7 @@ u16 _FAT_filetime_getDateFromRTC (void) {
 	struct tm timeParts;
 	time_t epochTime;
 	
-	if (time(&epochTime) == (time)-1) {
+	if (time(&epochTime) == (time_t)-1) {
 		return 0;
 	}
 	localtime_r(&epochTime, &timeParts);
