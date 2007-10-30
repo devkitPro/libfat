@@ -27,6 +27,9 @@
 
 	2006-07-11 - Chishm
 		* Original release
+		
+	2007-10-30 - Chishm
+		* Uses standard POSIX time functions
 */
 
 #ifndef _FILETIME_H
@@ -38,7 +41,7 @@
 u16 _FAT_filetime_getTimeFromRTC (void);
 u16 _FAT_filetime_getDateFromRTC (void);
 
-time_t _FAT_filetime_to_time_t (u16 time, u16 date);
+time_t _FAT_filetime_to_time_t (u16 t, u16 d);
 
 
 #endif // _FILETIME_H

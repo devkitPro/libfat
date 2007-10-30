@@ -34,53 +34,44 @@
 		
 	2006-10-01 - Chishm
 		* Fixed incorrect use of bitwise-or instead of logical-or
+		
+	2007-10-30 - Chishm
+		* Uses standard POSIX time functions
 */
 
 
+#include <time.h>
 #include "filetime.h"
-
-#ifdef NDS
-#include <nds/ipc.h>
-#endif
-
-#define HOUR_PM_INDICATOR 40
 
 #define MAX_HOUR 23
 #define MAX_MINUTE 59
 #define MAX_SECOND 59
 
-#define MAX_YEAR 99
-#define MIN_YEAR 6		// The date is invalid if it's before this year
 #define MAX_MONTH 12
 #define MIN_MONTH 1
 #define MAX_DAY 31
 #define MIN_DAY 1
 
-// Second values are averages, so time value won't be 100% accurate,
-// but should be within the correct month.
-#define SECONDS_PER_MINUTE 60
-#define SECONDS_PER_HOUR 3600
-#define SECONDS_PER_DAY 86400
-#define SECONDS_PER_MONTH 2629743
-#define SECONDS_PER_YEAR 31556926
-
 u16 _FAT_filetime_getTimeFromRTC (void) {
 #ifdef NDS
-	int hour, minute, second;
-	hour = (IPC->time.rtc.hours >= HOUR_PM_INDICATOR ? IPC->time.rtc.hours - HOUR_PM_INDICATOR : IPC->time.rtc.hours);
-	minute = IPC->time.rtc.minutes;
-	second = IPC->time.rtc.seconds;
+	struct tm timeParts;
+	time_t epochTime;
 	
+	if (time(&epochTime) == (time)-1) {
+		return 0;
+	}
+	localtime_r(&epochTime, &timeParts);
+
 	// Check that the values are all in range.
 	// If they are not, return 0 (no timestamp)
-	if ((hour < 0) || (hour > MAX_HOUR))	return 0;
-	if ((minute < 0) || (minute > MAX_MINUTE)) return 0;
-	if ((second < 0) || (second > MAX_SECOND)) return 0;
+	if ((timeParts.tm_hour < 0) || (timeParts.tm_hour > MAX_HOUR))	return 0;
+	if ((timeParts.tm_min < 0) || (timeParts.tm_min > MAX_MINUTE)) return 0;
+	if ((timeParts.tm_sec < 0) || (timeParts.tm_sec > MAX_SECOND)) return 0;
 	
 	return (
-		((hour & 0x1F) << 11) |
-		((minute & 0x3F) << 5) |
-		((second >> 1) & 0x1F) 
+		((timeParts.tm_hour & 0x1F) << 11) |
+		((timeParts.tm_min & 0x3F) << 5) |
+		((timeParts.tm_sec >> 1) & 0x1F) 
 	);
 #else
 	return 0;
@@ -90,49 +81,39 @@ u16 _FAT_filetime_getTimeFromRTC (void) {
 
 u16 _FAT_filetime_getDateFromRTC (void) {
 #ifdef NDS
-	int year, month, day;
+	struct tm timeParts;
+	time_t epochTime;
 	
-	year = IPC->time.rtc.year;
-	month = IPC->time.rtc.month;
-	day = IPC->time.rtc.day;
-	
-	if ((year < MIN_YEAR) || (year > MAX_YEAR)) return 0;
-	if ((month < MIN_MONTH) || (month > MAX_MONTH)) return 0;
-	if ((day < MIN_DAY) || (day > MAX_DAY)) return 0;
+	if (time(&epochTime) == (time)-1) {
+		return 0;
+	}
+	localtime_r(&epochTime, &timeParts);
+
+	if ((timeParts.tm_mon < MIN_MONTH) || (timeParts.tm_mon > MAX_MONTH)) return 0;
+	if ((timeParts.tm_mday < MIN_DAY) || (timeParts.tm_mday > MAX_DAY)) return 0;
 	
 	return ( 
-		(((year + 20) & 0x7F) <<9) |	// Adjust for MS-FAT base year (1980 vs 2000 for DS clock)
-		((month & 0xF) << 5) |
-		(day & 0x1F)
+		(((timeParts.tm_year - 80) & 0x7F) <<9) |	// Adjust for MS-FAT base year (1980 vs 1900 for tm_year)
+		((timeParts.tm_mon & 0xF) << 5) |
+		(timeParts.tm_mday & 0x1F)
 	);
 #else
 	return 0;
 #endif
 }
 
-time_t _FAT_filetime_to_time_t (u16 time, u16 date) {
-	int hour, minute, second;
-	int day, month, year;
-	
-	time_t result;
-	
-	hour = time >> 11;
-	minute = (time >> 5) & 0x3F;
-	second = (time & 0x1F) << 1;
-	
-	day = date & 0x1F;
-	month = (date >> 5) & 0x0F;
-	year = date >> 9;
-	
-	// Second values are averages, so time value won't be 100% accurate,
-	// but should be within the correct month.
-	result 	= second
-			+ minute * SECONDS_PER_MINUTE
-			+ hour * SECONDS_PER_HOUR
-			+ day * SECONDS_PER_DAY
-			+ month * SECONDS_PER_MONTH
-			+ year * SECONDS_PER_YEAR
-			;
+time_t _FAT_filetime_to_time_t (u16 t, u16 d) {
+	struct tm timeParts;
 
-	return result;
+	timeParts.tm_hour = t >> 11;
+	timeParts.tm_min = (t >> 5) & 0x3F;
+	timeParts.tm_sec = (t & 0x1F) << 1;
+	
+	timeParts.tm_mday = d & 0x1F;
+	timeParts.tm_mon = (d >> 5) & 0x0F;
+	timeParts.tm_year = d >> 9;
+	
+	timeParts.tm_isdst = 0;
+	
+	return mktime(&timeParts);
 }
