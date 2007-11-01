@@ -28,6 +28,9 @@
 
 	2006-07-11 - Chishm
 		* Original release
+	
+	2007-11-01 - Chishm
+		* Added unicode support
 */
 
 #ifndef _DIRECTORY_H
@@ -39,9 +42,13 @@
 #include "partition.h"
 
 #define DIR_ENTRY_DATA_SIZE 0x20
-#define MAX_FILENAME_LENGTH 256
+#define MAX_LFN_LENGTH	256
+#define MAX_FILENAME_LENGTH 768		// 256 UCS-2 characters encoded into UTF-8 can use up to 768 UTF-8 chars
 #define MAX_ALIAS_LENGTH 13
 #define LFN_ENTRY_LENGTH 13
+#define MAX_ALIAS_EXT_LENGTH 3
+#define MAX_ALIAS_PRI_LENGTH 8
+#define MAX_NUMERIC_TAIL 999999
 #define FAT16_ROOT_DIR_CLUSTER 0
 
 #define DIR_SEPARATOR '/'
