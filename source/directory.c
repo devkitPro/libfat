@@ -52,6 +52,9 @@
 	
 	2007-11-01 - Chishm
 		* Added unicode support
+		
+	2007-11-04 - Chishm
+		* Fixed alias creation bugs
 */
 
 #include <string.h>
@@ -831,6 +834,7 @@ static int _FAT_directory_createAlias (char* alias, const char* lfn) {
 		lossyConversion = true;
 	}
 	if (lfnExt != NULL && lfnExt[1] != '\0') {
+		lfnExt++;
 		alias[aliasPos] = '.';
 		aliasPos++;
 		memset (&ps, 0, sizeof(ps));
@@ -940,75 +944,70 @@ bool _FAT_directory_addEntry (PARTITION* partition, DIR_ENTRY* entry, u32 dirClu
 		} else if (aliasLen == 0) {
 			// It's a normal short filename
 			entrySize = 1;
-			// Copy into alias
-			for (i = 0, j = 0; (j < 8) && (alias[i] != '.') && (alias[i] != '\0'); i++, j++) {
-				entry->entryData[j] = alias[i];
-			}
-			while (j < 8) {
-				entry->entryData[j] = ' ';
-				++ j;
-			}
-			if (entry->filename[i] == '.') {
-				// Copy extension
-				++ i;
-				while ((alias[i] != '\0') && (j < 11)) {
-					entry->entryData[j] = alias[i];
-					++ i;
-					++ j;
-				}
-			}
-			while (j < 11) {
-				entry->entryData[j] = ' ';
-				++ j;
-			}
 		} else {
 			// It's a long filename with an alias
 			entrySize = ((lfnLen + LFN_ENTRY_LENGTH - 1) / LFN_ENTRY_LENGTH) + 1;
-			// expand primary part to 8 characters long by padding the end with underscores
-			i = MAX_ALIAS_LENGTH - MAX_ALIAS_EXT_LENGTH - 2; // 1 char for '.', one for NUL, 3 for extension
-			// Move extension to last 3 characters
-			while (alias[i] != '.' && i > 0) i--;
-			if (i > 0) {
-				j = MAX_ALIAS_LENGTH - MAX_ALIAS_EXT_LENGTH - 2; // 1 char for '.', one for NUL, 3 for extension
-				memmove (alias + j, alias + i, strlen(alias) - i);
-				// Pad primary component
-				memset (alias + i, '_', j - i);
-			}
 			
-			// Generate numeric tail
-			for (i = 1; i <= MAX_NUMERIC_TAIL; i++) {
-				j = i;
-				tmpCharPtr = alias + MAX_ALIAS_PRI_LENGTH - 1;
-				while (j > 0) {
-					*tmpCharPtr = j % 10;
-					tmpCharPtr--;
-					j /= 10;
+			// Generate full alias for all cases except when the alias is simply an upper case version of the LFN
+			if (strncasecmp (alias, entry->filename, MAX_ALIAS_LENGTH) != 0) {
+				// expand primary part to 8 characters long by padding the end with underscores
+				i = MAX_ALIAS_PRI_LENGTH - 1; 
+				// Move extension to last 3 characters
+				while (alias[i] != '.' && i > 0) i--;
+				if (i > 0) {
+					j = MAX_ALIAS_LENGTH - MAX_ALIAS_EXT_LENGTH - 2; // 1 char for '.', one for NUL, 3 for extension
+					memmove (alias + j, alias + i, strlen(alias) - i);
+					// Pad primary component
+					memset (alias + i, '_', j - i);
 				}
-				*tmpCharPtr = '~';
-				if (!_FAT_directory_entryExists (partition, alias, dirCluster)) {
-					break;
+				
+				// Generate numeric tail
+				for (i = 1; i <= MAX_NUMERIC_TAIL; i++) {
+					j = i;
+					tmpCharPtr = alias + MAX_ALIAS_PRI_LENGTH - 1;
+					while (j > 0) {
+						*tmpCharPtr = '0' + (j % 10); // ASCII numeric value
+						tmpCharPtr--;
+						j /= 10;
+					}
+					*tmpCharPtr = '~';
+					if (!_FAT_directory_entryExists (partition, alias, dirCluster)) {
+						break;
+					}
+				}
+				if (i > MAX_NUMERIC_TAIL) {
+					// Couldn't get a valid alias
+					return false;
 				}
 			}
-			if (i > MAX_NUMERIC_TAIL) {
-				// Couldn't get a valid alias
-				return false;
+		}
+
+		// Copy alias or short file name into directory entry data
+		for (i = 0, j = 0; (j < 8) && (alias[i] != '.') && (alias[i] != '\0'); i++, j++) {
+			entry->entryData[j] = alias[i];
+		}
+		while (j < 8) {
+			entry->entryData[j] = ' ';
+			++ j;
+		}
+		if (alias[i] == '.') {
+			// Copy extension
+			++ i;
+			while ((alias[i] != '\0') && (j < 11)) {
+				entry->entryData[j] = alias[i];
+				++ i;
+				++ j;
 			}
-			
-			// Now copy it into the directory entry data
-			memcpy (entry->entryData, alias, MAX_ALIAS_PRI_LENGTH);
-			memcpy (entry->entryData + MAX_ALIAS_PRI_LENGTH, alias + MAX_ALIAS_PRI_LENGTH + 1, MAX_ALIAS_EXT_LENGTH);
-			for (i = 0; i < MAX_ALIAS_PRI_LENGTH+MAX_ALIAS_EXT_LENGTH; i++) {
-				if (entry->entryData[i] < ' ') {
-					// Replace null and control characters with spaces
-					entry->entryData[i] = ' ';
-				}
-			}	
-			// Generate alias checksum
-			for (i=0; i < MAX_ALIAS_PRI_LENGTH+MAX_ALIAS_EXT_LENGTH; i++)
-			{
-				// NOTE: The operation is an unsigned char rotate right
-				aliasCheckSum = ((aliasCheckSum & 1) ? 0x80 : 0) + (aliasCheckSum >> 1) + entry->entryData[i];
-			}
+		}
+		while (j < 11) {
+			entry->entryData[j] = ' ';
+			++ j;
+		}
+		
+		// Generate alias checksum
+		for (i=0; i < ALIAS_ENTRY_LENGTH; i++) {
+			// NOTE: The operation is an unsigned char rotate right
+			aliasCheckSum = ((aliasCheckSum & 1) ? 0x80 : 0) + (aliasCheckSum >> 1) + entry->entryData[i];
 		}
 	}
 

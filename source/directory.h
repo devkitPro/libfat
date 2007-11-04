@@ -46,6 +46,7 @@
 #define MAX_FILENAME_LENGTH 768		// 256 UCS-2 characters encoded into UTF-8 can use up to 768 UTF-8 chars
 #define MAX_ALIAS_LENGTH 13
 #define LFN_ENTRY_LENGTH 13
+#define ALIAS_ENTRY_LENGTH 11
 #define MAX_ALIAS_EXT_LENGTH 3
 #define MAX_ALIAS_PRI_LENGTH 8
 #define MAX_NUMERIC_TAIL 999999
