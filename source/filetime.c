@@ -37,6 +37,9 @@
 		
 	2007-10-30 - Chishm
 		* Uses standard POSIX time functions
+		
+	2007-11-04 - Chishm
+		* Fix off-by-one error for months value
 */
 
 
@@ -47,8 +50,8 @@
 #define MAX_MINUTE 59
 #define MAX_SECOND 59
 
-#define MAX_MONTH 12
-#define MIN_MONTH 1
+#define MAX_MONTH 11
+#define MIN_MONTH 0
 #define MAX_DAY 31
 #define MIN_DAY 1
 
@@ -94,7 +97,7 @@ u16 _FAT_filetime_getDateFromRTC (void) {
 	
 	return ( 
 		(((timeParts.tm_year - 80) & 0x7F) <<9) |	// Adjust for MS-FAT base year (1980 vs 1900 for tm_year)
-		((timeParts.tm_mon & 0xF) << 5) |
+		(((timeParts.tm_mon + 1) & 0xF) << 5) |
 		(timeParts.tm_mday & 0x1F)
 	);
 #else
@@ -110,7 +113,7 @@ time_t _FAT_filetime_to_time_t (u16 t, u16 d) {
 	timeParts.tm_sec = (t & 0x1F) << 1;
 	
 	timeParts.tm_mday = d & 0x1F;
-	timeParts.tm_mon = (d >> 5) & 0x0F;
+	timeParts.tm_mon = ((d >> 5) & 0x0F) - 1;
 	timeParts.tm_year = d >> 9;
 	
 	timeParts.tm_isdst = 0;
