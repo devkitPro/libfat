@@ -37,6 +37,9 @@
 
 	2007-10-25 - Chishm
 		* Use CLUSTER_ERROR when an error occurs with the FAT, not CLUSTER_FREE
+		
+	2007-11-04 - Chishm
+		* _FAT_fat_nextCluster returns CLUSTER_FREE when input cluster is CLUSTER_FREE
 */
 
 
@@ -52,6 +55,10 @@ u32 _FAT_fat_nextCluster(PARTITION* partition, u32 cluster)
 	u32 nextCluster = CLUSTER_FREE;
 	u32 sector;
 	int offset;
+	
+	if (cluster == CLUSTER_FREE) {
+		return CLUSTER_FREE;
+	}
 	
 	switch (partition->filesysType) 
 	{
