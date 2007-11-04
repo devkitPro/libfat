@@ -48,6 +48,10 @@
 		
 	2007-04-12 - Chishm
 		* Fixed seek to end of file when reading
+		
+	2007-11-04 - Chishm
+		* file_extend_r renamed to _FAT_file_extend_r
+		* A cluster is only allocated for a file when data is written, instead of when the file is opened
 */
 
 
@@ -63,6 +67,20 @@
 #include "file_allocation_table.h"
 #include "bit_ops.h"
 #include "filetime.h"
+
+static void _FAT_file_resetPosition (FILE_STRUCT* file) {
+	PARTITION* partition = file->partition;
+
+	file->currentPosition = 0;
+	
+	file->rwPosition.cluster = file->startCluster;
+	file->rwPosition.sector = 0;
+	file->rwPosition.byte = 0;
+	
+	file->appendPosition.cluster = _FAT_fat_lastCluster (partition, file->startCluster);
+	file->appendPosition.sector = (file->filesize % partition->bytesPerCluster) / BYTES_PER_READ;
+	file->appendPosition.byte = file->filesize % BYTES_PER_READ;
+}
 
 int _FAT_open_r (struct _reent *r, void *fileStruct, const char *path, int flags, int mode) {
 	PARTITION* partition = NULL;
@@ -204,25 +222,12 @@ int _FAT_open_r (struct _reent *r, void *fileStruct, const char *path, int flags
 		file->filesize = 0;
 	}
 
-	// Get a new cluster for the file if required
-	if (file->startCluster == 0) {
-		file->startCluster = _FAT_fat_linkFreeCluster (partition, CLUSTER_FREE);
-	}
-	
 	// Remember the position of this file's directory entry
 	file->dirEntryStart = dirEntry.dataStart;		// Points to the start of the LFN entries of a file, or the alias for no LFN
 	file->dirEntryEnd = dirEntry.dataEnd;	
 	
-	file->currentPosition = 0;
-	
-	file->rwPosition.cluster = file->startCluster;
-	file->rwPosition.sector = 0;
-	file->rwPosition.byte = 0;
-	
-	file->appendPosition.cluster = _FAT_fat_lastCluster (partition, file->startCluster);
-	file->appendPosition.sector = (file->filesize % partition->bytesPerCluster) / BYTES_PER_READ;
-	file->appendPosition.byte = file->filesize % BYTES_PER_READ;
-	
+	_FAT_file_resetPosition (file);
+
 	// Check if the end of the file is on the end of a cluster
 	if ( (file->filesize > 0) && ((file->filesize % partition->bytesPerCluster)==0) ){
 		// Set flag to allocate a new cluster
@@ -310,7 +315,7 @@ int _FAT_read_r (struct _reent *r, int fd, char *ptr, int len) {
 	}
 
 	// Don't try to read if the read pointer is past the end of file
-	if (file->currentPosition >= file->filesize) {
+	if (file->currentPosition >= file->filesize || file->startCluster == CLUSTER_FREE) {
 		return 0;
 	}
 	
@@ -318,6 +323,11 @@ int _FAT_read_r (struct _reent *r, int fd, char *ptr, int len) {
 	if (len + file->currentPosition > file->filesize) {
 		r->_errno = EOVERFLOW;
 		len = file->filesize - file->currentPosition;
+	}
+	
+	// Short circuit cases where len is 0 (or less)
+	if (len <= 0) {
+		return 0;
 	}
 
 	remain = len;
@@ -446,7 +456,7 @@ int _FAT_read_r (struct _reent *r, int fd, char *ptr, int len) {
 /*
 Extend a file so that the size is the same as the rwPosition
 */
-static bool file_extend_r (struct _reent *r, FILE_STRUCT* file) {
+static bool _FAT_file_extend_r (struct _reent *r, FILE_STRUCT* file) {
 	PARTITION* partition = file->partition;
 	CACHE* cache = file->partition->cache;
 	
@@ -460,6 +470,8 @@ static bool file_extend_r (struct _reent *r, FILE_STRUCT* file) {
 	
 	position.byte = file->filesize % BYTES_PER_READ;
 	position.sector = (file->filesize % partition->bytesPerCluster) / BYTES_PER_READ;
+	// It is assumed that there is always a startCluster
+	// This will be true when _FAT_file_extend_r is called from _FAT_write_r
 	position.cluster = _FAT_fat_lastCluster (partition, file->startCluster);
 	
 	remain = file->currentPosition - file->filesize;
@@ -563,17 +575,28 @@ int _FAT_write_r (struct _reent *r,int fd, const char *ptr, int len) {
 		return 0;
 	}
 	
+	// Short circuit cases where len is 0 (or less)
+	if (len <= 0) {
+		return 0;
+	}
+	
 	partition = file->partition;
 	cache = file->partition->cache;
 	remain = len;
 
+	// Get a new cluster for the file if required
+	if (file->startCluster == CLUSTER_FREE) {
+		file->startCluster = _FAT_fat_linkFreeCluster (partition, CLUSTER_FREE);
+		_FAT_file_resetPosition (file);
+	}
+	
 	if (file->append) {
 		position = file->appendPosition;
 		flagAppending = true;
 	} else {
 		// If the write pointer is past the end of the file, extend the file to that size
 		if (file->currentPosition > file->filesize) {
-			if (!file_extend_r (r, file)) {
+			if (!_FAT_file_extend_r (r, file)) {
 				return 0;
 			}
 		}
@@ -788,7 +811,7 @@ int _FAT_seek_r (struct _reent *r, int fd, int pos, int dir) {
 	
 	// Only change the read/write position if it is within the bounds of the current filesize,
 	// or at the very edge of the file
-	if (file->filesize >= position) {
+	if (position <= file->filesize && file->startCluster != CLUSTER_FREE) {
 		// Calculate the sector and byte of the current position,
 		// and store them
 		file->rwPosition.sector = (position % partition->bytesPerCluster) / BYTES_PER_READ;
