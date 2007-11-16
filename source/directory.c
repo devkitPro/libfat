@@ -55,6 +55,9 @@
 		
 	2007-11-04 - Chishm
 		* Fixed alias creation bugs
+		
+	2007-11-16 - Chishm
+		* Fixed LFN creation with character codes > 0x7F
 */
 
 #include <string.h>
@@ -949,7 +952,10 @@ bool _FAT_directory_addEntry (PARTITION* partition, DIR_ENTRY* entry, u32 dirClu
 			entrySize = ((lfnLen + LFN_ENTRY_LENGTH - 1) / LFN_ENTRY_LENGTH) + 1;
 			
 			// Generate full alias for all cases except when the alias is simply an upper case version of the LFN
-			if (strncasecmp (alias, entry->filename, MAX_ALIAS_LENGTH) != 0) {
+			// and there isn't already a file with that name
+			if (strncasecmp (alias, entry->filename, MAX_ALIAS_LENGTH) != 0 ||
+				_FAT_directory_entryExists (partition, alias, dirCluster)) 
+			{
 				// expand primary part to 8 characters long by padding the end with underscores
 				i = MAX_ALIAS_PRI_LENGTH - 1; 
 				// Move extension to last 3 characters
@@ -1021,7 +1027,7 @@ bool _FAT_directory_addEntry (PARTITION* partition, DIR_ENTRY* entry, u32 dirClu
 
 	{
 		// lfn is only pushed onto the stack here, reducing overall stack usage
-		ucs2_t lfn[MAX_LFN_LENGTH];
+		ucs2_t lfn[MAX_LFN_LENGTH] = {0};
 		_FAT_directory_mbstoucs2 (lfn, entry->filename, MAX_LFN_LENGTH);
 
 		for (entryStillValid = true, i = entrySize; entryStillValid && i > 0; 
@@ -1031,8 +1037,8 @@ bool _FAT_directory_addEntry (PARTITION* partition, DIR_ENTRY* entry, u32 dirClu
 				// Long filename entry
 				lfnEntry[LFN_offset_ordinal] = (i - 1) | (i == entrySize ? LFN_END : 0);
 				for (j = 0; j < 13; j++) {
-					if (entry->filename [(i - 2) * 13 + j] == '\0') {
-						if ((j > 1) && (entry->filename [(i - 2) * 13 + (j-1)] == '\0')) {
+					if (lfn [(i - 2) * 13 + j] == '\0') {
+						if ((j > 1) && (lfn [(i - 2) * 13 + (j-1)] == '\0')) {
 							u16_to_u8array (lfnEntry, LFN_offset_table[j], 0xffff);		// Padding
 						} else {
 							u16_to_u8array (lfnEntry, LFN_offset_table[j], 0x0000);		// Terminating null character
