@@ -7,7 +7,6 @@ endif
 
 include $(DEVKITARM)/gba_rules
 
-TOPDIR ?= $(CURDIR)/..
 
 #---------------------------------------------------------------------------------
 # BUILD is the directory where object files & intermediate files will be placed
@@ -67,6 +66,7 @@ LIBDIRS	:=	$(LIBGBA)
 ifneq ($(BUILD),$(notdir $(CURDIR)))
 #---------------------------------------------------------------------------------
 
+export TOPDIR ?= $(CURDIR)/..
 
 export DEPSDIR := $(CURDIR)/$(BUILD)
 
@@ -140,6 +140,9 @@ $(GBABIN)	:	$(OFILES) $(LIB)
 	@$(AR) rcs "$(GBABIN)" $(OFILES)
 	@echo built ... $(notdir $@)
 
+$(LIB):
+	mkdir $(LIB)
+
 #---------------------------------------------------------------------------------
 # you need a rule like this for each extension you use as binary data 
 #---------------------------------------------------------------------------------
@@ -155,5 +158,3 @@ $(GBABIN)	:	$(OFILES) $(LIB)
 endif
 #---------------------------------------------------------------------------------------
 
-$(LIB):
-	mkdir $(LIB)

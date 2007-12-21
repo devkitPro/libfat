@@ -10,14 +10,11 @@ default: release
 
 all: release dist
 
-lib:
-	@[ -d $@ ] || mkdir -p $@
-
-release: lib
+release: 
 	make -C nds BUILD=release
 	make -C gba BUILD=release
 
-debug: lib
+debug:
 	make -C nds BUILD=debug
 	make -C gba BUILD=debug
 

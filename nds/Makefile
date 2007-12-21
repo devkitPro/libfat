@@ -7,8 +7,6 @@ endif
 
 include $(DEVKITARM)/ds_rules
 
-TOPDIR ?= $(CURDIR)/..
-
 #---------------------------------------------------------------------------------
 # BUILD is the directory where object files & intermediate files will be placed
 # SOURCES is a list of directories containing source code
@@ -28,8 +26,6 @@ LIB		:=	$(TOPDIR)/nds/lib
 #---------------------------------------------------------------------------------
 ARCH	:=	-mthumb -mthumb-interwork
 
-# note: arm9tdmi isn't the correct CPU arch, but anything newer and LD
-# *insists* it has a FPU or VFP, and it won't take no for an answer!
 CFLAGS	:=	-g -Wall -O2\
 		-march=armv5te -mtune=arm946e-s -fomit-frame-pointer\
 		-ffast-math \
@@ -64,6 +60,8 @@ LIBDIRS	:=	$(LIBNDS)
 #---------------------------------------------------------------------------------
 ifneq ($(BUILD),$(notdir $(CURDIR)))
 #---------------------------------------------------------------------------------
+
+export TOPDIR ?= $(CURDIR)/..
 
 
 export DEPSDIR := $(CURDIR)/$(BUILD)
@@ -120,6 +118,9 @@ $(ARM9BIN)	:	$(OFILES) $(LIB)
 	@$(AR) rcs "$(ARM9BIN)" $(OFILES)
 	@echo built ... $(notdir $@)
 
+$(LIB):
+	mkdir  $(LIB)
+
 
 -include $(DEPENDS)
 
@@ -127,5 +128,3 @@ $(ARM9BIN)	:	$(OFILES) $(LIB)
 endif
 #---------------------------------------------------------------------------------------
 
-$(LIB):
-	mkdir $(LIB)
