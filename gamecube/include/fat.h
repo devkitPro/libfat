@@ -25,14 +25,6 @@
  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
  EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-	2006-07-11 - Chishm
-		* Original release
-		
-	2006-07-14
-		* fatInitialise renamed to fatInit
-		
-	2006-07-16 - Chishm
-		* Added fatInitDefault
 */
 
 
@@ -43,27 +35,9 @@
 extern "C" {
 #endif
 
-// When compiling for NDS, make sure NDS is defined
-#ifndef NDS
- #if defined ARM9 || defined ARM7
-  #define NDS
- #endif
-#endif
+#include <gctypes.h>
 
-#if defined(__gamecube__) || defined (__wii__)
-#  include <gctypes.h>
-#else
-#  ifdef NDS
-#    include <nds/ndstypes.h>
-#  else
-#    include "gba_types.h"
-#endif
-
-#ifdef NDS
-typedef enum {PI_DEFAULT, PI_SLOT_1, PI_SLOT_2, PI_CUSTOM} PARTITION_INTERFACE;
-#else
 typedef enum {PI_CART_SLOT} PARTITION_INTERFACE;
-#endif
 
 struct IO_INTERFACE_STRUCT ;
 
@@ -90,7 +64,7 @@ bool fatMountNormalInterface (PARTITION_INTERFACE partitionNumber, u32 cacheSize
 /*
 Mount a partition on a custom device
 */
-bool fatMountCustomInterface (const struct IO_INTERFACE_STRUCT* device, u32 cacheSize);
+bool fatMountCustomInterface (struct IO_INTERFACE_STRUCT* device, u32 cacheSize);
 
 /*
 Unmount the partition specified by partitionNumber

@@ -39,10 +39,14 @@
  #endif
 #endif
 
-#ifdef NDS
- #include <nds/ndstypes.h>
+#if defined(__gamecube__) || defined (__wii__)
+   #include <gctypes.h>
 #else
- #include "gba_types.h"
+#  ifdef NDS
+   #include <nds/ndstypes.h>
+#  else
+   #include "gba_types.h"
+#  endif
 #endif
 
 #define BYTES_PER_READ 512

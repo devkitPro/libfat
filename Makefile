@@ -13,6 +13,8 @@ all: release dist
 release: 
 	make -C nds BUILD=release
 	make -C gba BUILD=release
+	make -C gamecube BUILD=release
+	make -C wii BUILD=release
 
 debug:
 	make -C nds BUILD=debug
@@ -21,16 +23,20 @@ debug:
 clean:
 	make -C nds clean
 	make -C gba clean
+	make -C gamecube clean
+	make -C wii clean
 
 dist-bin: release distribute/$(DATESTRING)
 	make -C nds dist-bin
 	make -C gba dist-bin
+	make -C gamecube dist-bin
 
 dist-src: distribute/$(DATESTRING)
 	@tar --exclude=*CVS* -cvjf distribute/$(DATESTRING)/libfat-src-$(DATESTRING).tar.bz2 \
 	source include Makefile \
 	nds/Makefile nds/include \
-	gba/Makefile gba/include 
+	gba/Makefile gba/include \
+	gamecube/Makefile gamecube/include
 
 dist: dist-bin dist-src
 
@@ -43,3 +49,4 @@ distribute:
 install: dist
 	make -C nds install
 	make -C gba install
+	make -C gamecube install

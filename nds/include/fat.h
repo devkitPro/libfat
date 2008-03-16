@@ -25,14 +25,6 @@
  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
  EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-	2006-07-11 - Chishm
-		* Original release
-		
-	2006-07-14
-		* fatInitialise renamed to fatInit
-		
-	2006-07-16 - Chishm
-		* Added fatInitDefault
 */
 
 
