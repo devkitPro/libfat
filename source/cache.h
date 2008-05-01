@@ -116,3 +116,4 @@ CACHE* _FAT_cache_constructor (u32 numberOfPages, const IO_INTERFACE* discInterf
 void _FAT_cache_destructor (CACHE* cache);
 
 #endif // _CACHE_H
+

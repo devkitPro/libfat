@@ -31,6 +31,10 @@
  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
  EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+	2007-11-14 - Chishm
+		* Fixed _FAT_cache_constructor to return NULL on error, not false
+		* Fixed _FAT_cache_flush to return false on error. With thanks to xorloser
 */
 
 #include <string.h>
@@ -54,7 +58,7 @@ CACHE* _FAT_cache_constructor (u32 numberOfPages, const IO_INTERFACE* discInterf
 	
 	cache = (CACHE*) _FAT_mem_allocate (sizeof(CACHE));
 	if (cache == NULL) {
-		return false;
+		return NULL;
 	}
 
 	cache->disc = discInterface;
@@ -64,7 +68,7 @@ CACHE* _FAT_cache_constructor (u32 numberOfPages, const IO_INTERFACE* discInterf
 	cacheEntries = (CACHE_ENTRY*) _FAT_mem_allocate ( sizeof(CACHE_ENTRY) * numberOfPages);
 	if (cacheEntries == NULL) {
 		_FAT_mem_free (cache);
-		return false;
+		return NULL;
 	}
 
 	for (i = 0; i < numberOfPages; i++) {
@@ -79,7 +83,7 @@ CACHE* _FAT_cache_constructor (u32 numberOfPages, const IO_INTERFACE* discInterf
 	if (cache->pages == NULL) {
 		_FAT_mem_free (cache->cacheEntries);
 		_FAT_mem_free (cache);
-		return false;
+		return NULL;
 	}
 
 	return cache;
@@ -217,7 +221,7 @@ bool _FAT_cache_flush (CACHE* cache) {
 	for (i = 0; i < cache->numberOfPages; i++) {
 		if (cache->cacheEntries[i].dirty) {
 			if (!_FAT_disc_writeSectors (cache->disc, cache->cacheEntries[i].sector, 1, cache->pages + CACHE_PAGE_SIZE * i)) {
-				return CACHE_FREE;
+				return false;
 			}
 		}
 		cache->cacheEntries[i].count = 0;
@@ -235,3 +239,4 @@ void _FAT_cache_invalidate (CACHE* cache) {
 		cache->cacheEntries[i].dirty = false;
 	}
 }
+
