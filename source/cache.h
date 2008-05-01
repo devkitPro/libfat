@@ -67,6 +67,8 @@ Precondition: offset + size <= BYTES_PER_READ
 */
 bool _FAT_cache_readPartialSector (CACHE* cache, void* buffer, u32 sector, u32 offset, u32 size);
 
+bool _FAT_cache_readLittleEndianValue (CACHE* cache, u32 *value, u32 sector, u32 offset, u32 num_bytes);
+
 /*
 Write data to a sector in the cache
 If the sector is not in the cache, it will be swapped in.
@@ -76,6 +78,8 @@ size is the amount of data to read
 Precondition: offset + size <= BYTES_PER_READ
 */
 bool _FAT_cache_writePartialSector (CACHE* cache, const void* buffer, u32 sector, u32 offset, u32 size);
+
+bool _FAT_cache_writeLittleEndianValue (CACHE* cache, const u32 value, u32 sector, u32 offset, u32 num_bytes);
 
 /*
 Write data to a sector in the cache, zeroing the sector first

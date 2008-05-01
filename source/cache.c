@@ -44,6 +44,7 @@
 #include "disc_io/disc.h"
 
 #include "mem_allocate.h"
+#include "bit_ops.h"
 
 #define CACHE_FREE 0xFFFFFFFF
 
@@ -167,6 +168,19 @@ bool _FAT_cache_readPartialSector (CACHE* cache, void* buffer, u32 sector, u32 o
 	return true;
 }
 
+bool _FAT_cache_readLittleEndianValue (CACHE* cache, u32 *value, u32 sector, u32 offset, u32 num_bytes) {
+  u8 buf[4];
+  if (!_FAT_cache_readPartialSector(cache, buf, sector, offset, num_bytes)) return false;
+  
+  switch(num_bytes) {
+  case 1: *value = buf[0]; break;
+  case 2: *value = u8array_to_u16(buf,0); break;
+  case 4: *value = u8array_to_u32(buf,0); break;
+  default: return false;
+  }
+  return true;
+}
+
 /* 
 Writes some data to a cache page, making sure it is loaded into memory first.
 */
@@ -186,6 +200,19 @@ bool _FAT_cache_writePartialSector (CACHE* cache, const void* buffer, u32 sector
 	cache->cacheEntries[page].dirty = true;
 
 	return true;
+}
+
+bool _FAT_cache_writeLittleEndianValue (CACHE* cache, const u32 value, u32 sector, u32 offset, u32 size) {
+  u8 buf[4] = {0, 0, 0, 0};
+
+  switch(size) {
+  case 1: buf[0] = value; break;
+  case 2: u16_to_u8array(buf, 0, value); break;
+  case 4: u32_to_u8array(buf, 0, value); break;
+  default: return false;
+  }
+
+  return _FAT_cache_writePartialSector(cache, buf, sector, offset, size);
 }
 
 /* 
