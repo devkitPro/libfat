@@ -90,7 +90,7 @@ export LIBPATHS	:=	$(foreach dir,$(LIBDIRS),-L$(dir)/lib)
 #---------------------------------------------------------------------------------
 $(BUILD):
 	@[ -d $@ ] || mkdir -p $@
-	@make --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile
+	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile
 
 #---------------------------------------------------------------------------------
 clean:
@@ -102,8 +102,9 @@ all: $(ARM9BIN)
 dist-bin:
 	@tar --exclude=*CVS* -cvjf $(TOPDIR)/distribute/$(DATESTRING)/libfat-nds-$(DATESTRING).tar.bz2 include lib
 
-install: dist-bin
-	bzip2 -cd $(TOPDIR)/distribute/$(DATESTRING)/libfat-nds-$(DATESTRING).tar.bz2 | tar -xv -C $(DEVKITPRO)/libnds
+install:
+	cp lib/libfat.a $(DEVKITPRO)/libnds/lib
+	cp include/fat.h $(DEVKITPRO)/libnds/include
 
 #---------------------------------------------------------------------------------
 else

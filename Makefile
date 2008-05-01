@@ -10,43 +10,81 @@ default: release
 
 all: release dist
 
-release: 
-	make -C nds BUILD=release
-	make -C gba BUILD=release
-	make -C gamecube BUILD=release
-	make -C wii BUILD=release
+release: nds-release gba-release cube-release wii-release
 
-debug:
-	make -C nds BUILD=debug
-	make -C gba BUILD=debug
+ogc-release: cube-release wii-release
 
-clean:
-	make -C nds clean
-	make -C gba clean
-	make -C gamecube clean
-	make -C wii clean
+nds-release:
+	$(MAKE) -C nds BUILD=release
 
-dist-bin: release distribute/$(DATESTRING)
-	make -C nds dist-bin
-	make -C gba dist-bin
-	make -C gamecube dist-bin
+gba-release:
+	$(MAKE) -C gba BUILD=release
+
+cube-release:
+	$(MAKE) -C libogc PLATFORM=cube BUILD=cube_release
+
+wii-release:
+	$(MAKE) -C libogc PLATFORM=wii BUILD=wii_release
+
+debug: nds-debug gba-debug cube-debug wii-debug
+
+ogc-debug: cube-debug wii-debug
+
+nds-debug:
+	$(MAKE) -C nds BUILD=debug
+
+gba-debug:
+	$(MAKE) -C gba BUILD=debug
+
+
+cube-debug:
+	$(MAKE) -C libogc PLATFORM=cube BUILD=wii_debug
+
+wii-debug:
+	$(MAKE) -C libogc PLATFORM=wii BUILD=cube_debug
+
+clean: nds-clean gba-clean ogc-clean
+
+nds-clean:
+	$(MAKE) -C nds clean
+
+gba-clean:
+	$(MAKE) -C gba clean
+
+ogc-clean:
+	$(MAKE) -C libogc clean
+
+dist-bin: nds-dist-bin gba-dist-bin ogc-dist-bin
+
+nds-dist-bin: nds-release distribute/$(DATESTRING)
+	$(MAKE) -C nds dist-bin
+
+gba-dist-bin: gba-release distribute/$(DATESTRING)
+	$(MAKE) -C gba dist-bin
+
+ogc-dist-bin: ogc-release distribute/$(DATESTRING)
+	$(MAKE) -C libogc dist-bin
 
 dist-src: distribute/$(DATESTRING)
 	@tar --exclude=*CVS* -cvjf distribute/$(DATESTRING)/libfat-src-$(DATESTRING).tar.bz2 \
 	source include Makefile \
 	nds/Makefile nds/include \
 	gba/Makefile gba/include \
-	gamecube/Makefile gamecube/include
+	libogc/Makefile libogc/include
 
 dist: dist-bin dist-src
 
-distribute/$(DATESTRING): distribute
+distribute/$(DATESTRING):
 	@[ -d $@ ] || mkdir -p $@
 
-distribute:
-	@[ -d $@ ] || mkdir -p $@
 
-install: dist
+install: nds-install gba-install ogc-install
+
+nds-install: nds-release
 	make -C nds install
+
+gba-install: gba-release
 	make -C gba install
-	make -C gamecube install
+
+ogc-install: cube-release wii-release
+	make -C libogc install
