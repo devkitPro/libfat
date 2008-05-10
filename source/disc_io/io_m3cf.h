@@ -37,7 +37,7 @@
 // 'M3CF'
 #define DEVICE_TYPE_M3CF 0x4643334D
 
-#include "disc_io.h"
+#include "../disc.h"
 
 // export interface
 extern const IO_INTERFACE _io_m3cf ;

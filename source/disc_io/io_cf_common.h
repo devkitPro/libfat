@@ -38,7 +38,7 @@
 #ifndef IO_CF_COMMON_H
 #define IO_CF_COMMON_H
 
-#include "disc_io.h"
+#include "../disc.h"
 
 typedef struct {
 	vu16* data;

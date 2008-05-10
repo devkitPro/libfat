@@ -43,7 +43,7 @@
 #ifndef IO_SD_COMMON_H
 #define IO_SD_COMMON_H
 
-#include "disc_io.h"
+#include "../disc.h"
 
 /* SD commands */
 #define GO_IDLE_STATE 0

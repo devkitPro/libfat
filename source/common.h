@@ -44,6 +44,8 @@
 #else
 #  ifdef NDS
    #include <nds/ndstypes.h>
+   #include <nds/system.h>
+   
 #  else
    #include "gba_types.h"
 #  endif
@@ -54,5 +56,7 @@
 #ifndef NULL
  #define NULL 0
 #endif
+
+#include <fat.h>
 
 #endif // _COMMON_H

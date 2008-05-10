@@ -36,7 +36,7 @@
 // 'DLDI'
 #define DEVICE_TYPE_DLDI 0x49444C44
 
-#include "disc_io.h"
+#include "../disc.h"
 
 // export interface
 extern const IO_INTERFACE _io_dldi ;

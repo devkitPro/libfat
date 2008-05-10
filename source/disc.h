@@ -1,7 +1,8 @@
 /*
- disc_io.h
- Interface template for low level disc functions.
-
+ disc.h
+ Interface to the low level disc functions. Used by the higher level
+ file system code.
+ 
  Copyright (c) 2006 Michael "Chishm" Chisholm
 	
  Redistribution and use in source and binary forms, with or without modification,
@@ -27,16 +28,12 @@
 
 	2006-07-11 - Chishm
 		* Original release
-		
-	2006-07-16 - Chishm
-		* Renamed _CF_USE_DMA to _IO_USE_DMA
-		* Renamed _CF_ALLOW_UNALIGNED to _IO_ALLOW_UNALIGNED
+
 */
+#ifndef _DISC_H
+#define _DISC_H
 
-#ifndef _DISC_IO_H
-#define _DISC_IO_H
-
-#include "../common.h"
+#include "common.h"
 
 //----------------------------------------------------------------------
 // Customisable features
@@ -53,10 +50,15 @@
  #error "You can't use both DMA and unaligned memory"
 #endif
 
+#define DEVICE_TYPE_WII	0
+#define DEVICE_TYPE_GC	1
+
 #define FEATURE_MEDIUM_CANREAD		0x00000001
 #define FEATURE_MEDIUM_CANWRITE		0x00000002
 #define FEATURE_SLOT_GBA			0x00000010
 #define FEATURE_SLOT_NDS			0x00000020
+#define FEATURE_GAMECUBE_SLOTA		0x00000010
+#define FEATURE_GAMECUBE_SLOTB		0x00000020
 
 typedef bool (* FN_MEDIUM_STARTUP)(void) ;
 typedef bool (* FN_MEDIUM_ISINSERTED)(void) ;
@@ -78,4 +80,82 @@ struct IO_INTERFACE_STRUCT {
 
 typedef struct IO_INTERFACE_STRUCT IO_INTERFACE ;
 
-#endif	// define _DISC_IO_H
+/*
+Search for a block based device in all available slots.
+Return a pointer to a usable interface if one is found,
+NULL if not.
+*/
+extern const IO_INTERFACE* _FAT_disc_findInterface (void);
+
+/*
+Search for a block based device in a specific slot.
+Return a pointer to a usable interface if one is found,
+NULL if not.
+*/
+extern const IO_INTERFACE* _FAT_disc_findInterfaceSlot (PARTITION_INTERFACE partitionNumber);
+
+/*
+Check if a disc is inserted
+Return true if a disc is inserted and ready, false otherwise
+*/
+static inline bool _FAT_disc_isInserted (const IO_INTERFACE* disc) {
+	return disc->fn_isInserted();
+}
+
+/*
+Read numSectors sectors from a disc, starting at sector. 
+numSectors is between 1 and 256
+sector is from 0 to 2^28
+buffer is a pointer to the memory to fill
+*/
+static inline bool _FAT_disc_readSectors (const IO_INTERFACE* disc, u32 sector, u32 numSectors, void* buffer) {
+	return disc->fn_readSectors (sector, numSectors, buffer);
+}
+
+/*
+Write numSectors sectors to a disc, starting at sector. 
+numSectors is between 1 and 256
+sector is from 0 to 2^28
+buffer is a pointer to the memory to read from
+*/
+static inline bool _FAT_disc_writeSectors (const IO_INTERFACE* disc, u32 sector, u32 numSectors, const void* buffer) {
+	return disc->fn_writeSectors (sector, numSectors, buffer);
+}
+
+/*
+Reset the card back to a ready state
+*/
+static inline bool _FAT_disc_clearStatus (const IO_INTERFACE* disc) {
+	return disc->fn_clearStatus();
+}
+
+/*
+Initialise the disc to a state ready for data reading or writing
+*/
+static inline bool _FAT_disc_startup (const IO_INTERFACE* disc) {
+	return disc->fn_startup();
+}
+
+/*
+Put the disc in a state ready for power down.
+Complete any pending writes and disable the disc if necessary
+*/
+static inline bool _FAT_disc_shutdown (const IO_INTERFACE* disc) {
+	return disc->fn_shutdown();
+}
+
+/*
+Return a 32 bit value unique to each type of interface
+*/
+static inline u32 _FAT_disc_hostType (const IO_INTERFACE* disc) {
+	return disc->ioType;
+}
+
+/*
+Return a 32 bit value that specifies the capabilities of the disc
+*/
+static inline u32 _FAT_disc_features (const IO_INTERFACE* disc) {
+	return disc->features;
+}
+
+#endif // _DISC_H

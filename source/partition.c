@@ -48,7 +48,7 @@
 #include "mem_allocate.h"
 
 /* 
-This device name, as known by DevKitPro
+This device name, as known by devkitPro toolchains
 */
 const char* DEVICE_NAME = "fat";
 
@@ -102,14 +102,16 @@ enum BPB {
 	BPB_bootSig_AA = 0x1FF
 };
 
-
-#ifdef NDS
+#if defined(__wii__)
+#define MAXIMUM_PARTITIONS 5
+#elif defined(__gamecube__)
 #define MAXIMUM_PARTITIONS 4
-PARTITION* _FAT_partitions[MAXIMUM_PARTITIONS] = {NULL};
+#elif defined(NDS)
+#define MAXIMUM_PARTITIONS 4
 #else // not defined NDS
 #define MAXIMUM_PARTITIONS 1
-PARTITION* _FAT_partitions[MAXIMUM_PARTITIONS] = {NULL};
 #endif // defined NDS
+PARTITION* _FAT_partitions[MAXIMUM_PARTITIONS] = {NULL};
 
 // Use a single static buffer for the partitions
 
@@ -235,7 +237,6 @@ static void _FAT_partition_destructor (PARTITION* partition) {
 }
 
 bool _FAT_partition_mount (PARTITION_INTERFACE partitionNumber, u32 cacheSize) {
-#ifdef NDS
 	int i;
 	const IO_INTERFACE* disc = NULL;
 	
@@ -243,23 +244,7 @@ bool _FAT_partition_mount (PARTITION_INTERFACE partitionNumber, u32 cacheSize) {
 		return false;
 	}	
 
-	switch (partitionNumber) {
-		case PI_SLOT_1:
-			// Mount the disc in slot 1
-			disc = _FAT_disc_dsSlotFindInterface ();
-			break;
-		case PI_SLOT_2:
-			// Mount the disc in slot 2
-			disc = _FAT_disc_gbaSlotFindInterface ();
-			break;
-		case PI_DEFAULT:
-		case PI_CUSTOM:
-		default:
-			// Anything else has to be handled specially
-			return false;
-			break;
-	}
-
+	disc = _FAT_disc_findInterfaceSlot (partitionNumber);
 	if (disc == NULL) {
 		return false;
 	}
@@ -278,33 +263,25 @@ bool _FAT_partition_mount (PARTITION_INTERFACE partitionNumber, u32 cacheSize) {
 		return false;
 	}
 
-#else // not defined NDS
-	const IO_INTERFACE* disc = NULL;
-	
-	if (_FAT_partitions[partitionNumber] != NULL) {
-		return false;
-	}	
-
-	// Only ever one partition on GBA
-	disc = _FAT_disc_gbaSlotFindInterface ();
-	_FAT_partitions[partitionNumber] = _FAT_partition_constructor (disc, cacheSize);
-	
-#endif // defined NDS
-
 	return true;
 }
 
 bool _FAT_partition_mountCustomInterface (const IO_INTERFACE* device, u32 cacheSize) {
-#ifdef NDS	
+	
+
+#ifdef GBA
+	if (_FAT_partitions[0] != NULL)	return false;
+
+	if (device == NULL) return false;
+
+	// Only ever one partition on GBA
+	_FAT_partitions[0] = _FAT_partition_constructor (device, cacheSize);
+#else
 	int i;
 	
-	if (_FAT_partitions[PI_CUSTOM] != NULL) {
-		return false;
-	}	
+	if (_FAT_partitions[PI_CUSTOM] != NULL) return false;
 
-	if (device == NULL) {
-		return false;
-	}
+	if (device == NULL) return false;
 
 	// See if that disc is already in use, if so, then just copy the partition pointer
 	for (i = 0; i < MAXIMUM_PARTITIONS; i++) {
@@ -319,26 +296,12 @@ bool _FAT_partition_mountCustomInterface (const IO_INTERFACE* device, u32 cacheS
 	if (_FAT_partitions[PI_CUSTOM] == NULL) {
 		return false;
 	}
-	
-#else // not defined NDS
-	if (_FAT_partitions[PI_CART_SLOT] != NULL) {
-		return false;
-	}	
-
-	if (device == NULL) {
-		return false;
-	}
-
-	// Only ever one partition on GBA
-	_FAT_partitions[PI_CART_SLOT] = _FAT_partition_constructor (device, cacheSize);
-	
-#endif // defined NDS
-
+#endif
 	return true;
 }
 
 bool _FAT_partition_setDefaultInterface (PARTITION_INTERFACE partitionNumber) {
-#ifdef NDS	// Can only set the default partition when there is more than 1, so doesn't apply to GBA
+#ifndef GBA	// Can only set the default partition when there is more than 1, so doesn't apply to GBA
 	if ((partitionNumber < 1) || (partitionNumber >= MAXIMUM_PARTITIONS)) {
 		return false;
 	}
@@ -353,7 +316,7 @@ bool _FAT_partition_setDefaultInterface (PARTITION_INTERFACE partitionNumber) {
 }
 
 bool _FAT_partition_setDefaultPartition (PARTITION* partition) {
-#ifdef NDS	// Can only set the default partition when there is more than 1, so doesn't apply to GBA
+#ifndef GBA	// Can only set the default partition when there is more than 1, so doesn't apply to GBA
 	int i;
 	
 	if (partition == NULL) {
@@ -424,7 +387,10 @@ bool _FAT_partition_unsafeUnmount (PARTITION_INTERFACE partitionNumber) {
 }
 
 PARTITION* _FAT_partition_getPartitionFromPath (const char* path) {
-#ifdef NDS
+
+#ifdef GBA
+ 	return _FAT_partitions[0];
+#else
 	int namelen;
 	int partitionNumber;
 	
@@ -454,8 +420,5 @@ PARTITION* _FAT_partition_getPartitionFromPath (const char* path) {
 	}
 	
 	return _FAT_partitions[partitionNumber];
-#else // not defined NDS
-	// Only one possible partition on GBA
-	return _FAT_partitions[PI_CART_SLOT];
-#endif // defined NDS
+#endif
 }

@@ -40,7 +40,7 @@
 // 'M3SD'
 #define DEVICE_TYPE_M3SD 0x4453334D
 
-#include "disc_io.h"
+#include "../disc.h"
 
 // export interface
 extern const IO_INTERFACE _io_m3sd ;

@@ -74,137 +74,97 @@
 */
 
 #include "../disc.h"
+#include "wiisd.h"
+#include "gcsd.h"
 
-#ifdef NDS
- #include <nds.h>
-#endif
-
-#include <fat.h>
-
-// Include known io-interfaces:
-#include "io_dldi.h"
-#include "io_njsd.h"
-#include "io_nmmc.h"
-#include "io_mpcf.h"
-#include "io_m3cf.h"
-#include "io_sccf.h"
-#include "io_scsd.h"
-#include "io_m3sd.h"
 
 const IO_INTERFACE* ioInterfaces[] = {
-	&_io_dldi,		// Reserved for new interfaces
-#ifdef NDS
-	// Place Slot 1 (DS Card) interfaces here
-	&_io_njsd, &_io_nmmc,
+	&__io_gcsda,
+	&__io_gcsdb,
+#ifdef __wii__
+	&__io_wiisd
 #endif
-	// Place Slot 2 (GBA Cart) interfaces here
-	&_io_mpcf, &_io_m3cf, &_io_sccf, &_io_scsd, &_io_m3sd
 };
 
-/*
-
-	Hardware level disc funtions
-
-*/
-
-const IO_INTERFACE* _FAT_disc_gbaSlotFindInterface (void)
+#ifdef __wii__
+const IO_INTERFACE* _FAT_disc_wiiFindInterface(void)
 {
-	// If running on an NDS, make sure the correct CPU can access
-	// the GBA cart. First implemented by SaTa.
-#ifdef NDS
- #ifdef ARM9
-	sysSetCartOwner(BUS_OWNER_ARM9);
- #endif
-#endif
-
 	int i;
 
 	for (i = 0; i < (sizeof(ioInterfaces) / sizeof(IO_INTERFACE*)); i++) {
-		if ((ioInterfaces[i]->features & FEATURE_SLOT_GBA) && (ioInterfaces[i]->fn_startup())) {
+		if ((ioInterfaces[i]->ioType == DEVICE_TYPE_WII) && (ioInterfaces[i]->fn_startup())) {
+			return ioInterfaces[i];
+		}
+	}
+	return NULL;
+}
+#endif
+
+const IO_INTERFACE* _FAT_disc_gcFindInterface(void)
+{
+	int i;
+
+
+	for (i = 0; i < (sizeof(ioInterfaces) / sizeof(IO_INTERFACE*)); i++) {
+		if ((ioInterfaces[i]->ioType == DEVICE_TYPE_GC) && (ioInterfaces[i]->fn_startup())) {
 			return ioInterfaces[i];
 		}
 	}
 	return NULL;
 }
 
-#ifdef NDS
-/*
- * Check the DS card slot for a valid memory card interface
- * If an interface is found, it is set as the default interace
- * and it returns true. Otherwise the default interface is left
- * untouched and it returns false.
- */
-const IO_INTERFACE* _FAT_disc_dsSlotFindInterface (void)
+const IO_INTERFACE* _FAT_disc_gcFindInterfaceSlot(int slot)
 {
-#ifdef ARM9
-	sysSetCardOwner(BUS_OWNER_ARM9);
-#endif
 	int i;
+	int mask;
+
+	if(slot == 0)
+		mask = FEATURE_GAMECUBE_SLOTA;
+	else if(slot == 1)
+		mask = FEATURE_GAMECUBE_SLOTB;
+	else
+		return NULL;
 
 	for (i = 0; i < (sizeof(ioInterfaces) / sizeof(IO_INTERFACE*)); i++) {
-		if ((ioInterfaces[i]->features & FEATURE_SLOT_NDS) && (ioInterfaces[i]->fn_startup())) {
+		if ((ioInterfaces[i]->ioType == DEVICE_TYPE_GC) && (ioInterfaces[i]->features & mask) && (ioInterfaces[i]->fn_startup())) {
 			return ioInterfaces[i];
 		}
 	}
-
 	return NULL;
 }
-#endif
 
-/*
- * When running on an NDS, check the either slot for a valid memory
- * card interface. 
- * When running on a GBA, call _FAT_disc_gbaSlotFindInterface
- * If an interface is found, it is set as the default interace
- * and it returns true. Otherwise the default interface is left
- * untouched and it returns false.
- */
-#ifdef NDS
-const IO_INTERFACE* _FAT_disc_findInterface (void)
+
+const IO_INTERFACE* _FAT_disc_findInterface(void)
 {
-#ifdef ARM9
-	sysSetBusOwners(BUS_OWNER_ARM9, BUS_OWNER_ARM9);
-#endif
+#ifdef __wii__
+	const IO_INTERFACE *disc;
 
-	int i;
-
-	for (i = 0; i < (sizeof(ioInterfaces) / sizeof(IO_INTERFACE*)); i++) {
-		if (ioInterfaces[i]->fn_startup()) {
-			return ioInterfaces[i];
-		}
-	}
-
-	return NULL;
-}
+	disc = _FAT_disc_wiiFindInterface();
+	if(disc == NULL)
+		disc = _FAT_disc_gcFindInterface();
+	return disc;
 #else
-const IO_INTERFACE* _FAT_disc_findInterface (void)
-{
-	return _FAT_disc_gbaSlotFindInterface();
-}
+	return _FAT_disc_gcFindInterface();
 #endif
+}
 
 const IO_INTERFACE* _FAT_disc_findInterfaceSlot (PARTITION_INTERFACE partitionNumber)
 {
-
-#ifdef NDS
-	switch (partitionNumber) {
-		case PI_SLOT_1:
-			// Mount the disc in slot 1
-			return _FAT_disc_dsSlotFindInterface ();
+	switch(partitionNumber)
+	{
+		case PI_SDGECKO_A:
+			return _FAT_disc_gcFindInterfaceSlot(0);
 			break;
-		case PI_SLOT_2:
-			// Mount the disc in slot 2
-			return _FAT_disc_gbaSlotFindInterface ();
+		case PI_SDGECKO_B:
+			return _FAT_disc_gcFindInterfaceSlot(1);
 			break;
-		case PI_DEFAULT:
-		case PI_CUSTOM:
+#ifdef __wii__
+		case PI_INTERNAL_SD:
+			return _FAT_disc_wiiFindInterface();
+			break;
+#endif
 		default:
-			// Anything else has to be handled specially
 			return NULL;
 			break;
 	}
-#else
-	return _FAT_disc_gbaSlotFindInterface ();
-#endif
-
 }

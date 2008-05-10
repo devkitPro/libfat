@@ -40,7 +40,7 @@
 #define _CACHE_H
 
 #include "common.h"
-#include "disc_io/disc_io.h"
+#include "disc.h"
 
 #define CACHE_PAGE_SIZE BYTES_PER_READ
 

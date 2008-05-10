@@ -37,7 +37,11 @@ extern "C" {
 
 #include <gctypes.h>
 
-typedef enum {PI_CART_SLOT} PARTITION_INTERFACE;
+#if defined(__wii__)
+typedef enum {PI_DEFAULT, PI_SDGECKO_A, PI_SDGECKO_B, PI_INTERNAL_SD, PI_CUSTOM } PARTITION_INTERFACE;
+#else
+typedef enum {PI_DEFAULT, PI_SDGECKO_A, PI_SDGECKO_B, PI_CUSTOM } PARTITION_INTERFACE;
+#endif
 
 struct IO_INTERFACE_STRUCT ;
 

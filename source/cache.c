@@ -41,7 +41,7 @@
 
 #include "common.h"
 #include "cache.h"
-#include "disc_io/disc.h"
+#include "disc.h"
 
 #include "mem_allocate.h"
 #include "bit_ops.h"

@@ -34,8 +34,6 @@
 #define _PARTITION_H
 
 #include "common.h"
-
-#include "disc_io/disc.h"
 #include "cache.h"
 
 // Device name
@@ -44,11 +42,6 @@ extern const char* DEVICE_NAME;
 // Filesystem type
 typedef enum {FS_UNKNOWN, FS_FAT12, FS_FAT16, FS_FAT32} FS_TYPE;
 
-#ifdef NDS
-typedef enum {PI_DEFAULT, PI_SLOT_1, PI_SLOT_2, PI_CUSTOM} PARTITION_INTERFACE;
-#else
-typedef enum {PI_CART_SLOT} PARTITION_INTERFACE;
-#endif
 
 typedef struct {
 	u32 fatStart;

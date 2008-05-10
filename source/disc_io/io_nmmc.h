@@ -37,7 +37,7 @@
 #ifndef IO_NMMC_H
 #define IO_NMMC_H
 
-#include "disc_io.h"
+#include "../disc.h"
 
 #ifdef NDS
 

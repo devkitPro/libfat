@@ -57,12 +57,17 @@ extern "C" {
 #    include <nds/ndstypes.h>
 #  else
 #    include "gba_types.h"
+#  endif
 #endif
 
-#ifdef NDS
-typedef enum {PI_DEFAULT, PI_SLOT_1, PI_SLOT_2, PI_CUSTOM} PARTITION_INTERFACE;
-#else
-typedef enum {PI_CART_SLOT} PARTITION_INTERFACE;
+#if defined( __wii__ )
+typedef enum {PI_DEFAULT, PI_SDGECKO_A, PI_SDGECKO_B, PI_INTERNAL_SD, PI_CUSTOM, PI_MAX_PARTITIONS } PARTITION_INTERFACE;
+#elif defined(__gamecube__)
+typedef enum {PI_DEFAULT, PI_SDGECKO_A, PI_SDGECKO_B, PI_CUSTOM, PI_MAX_PARTITIONS } PARTITION_INTERFACE;
+#elif defined(NDS)
+typedef enum {PI_DEFAULT, PI_SLOT_1, PI_SLOT_2, PI_CUSTOM, PI_MAX_PARTITIONS} PARTITION_INTERFACE;
+#elif defined(GBA)
+typedef enum {PI_CART_SLOT, PI_MAX_PARTITIONS} PARTITION_INTERFACE;
 #endif
 
 struct IO_INTERFACE_STRUCT ;

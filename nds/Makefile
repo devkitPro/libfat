@@ -16,7 +16,7 @@ include $(DEVKITARM)/ds_rules
 # all directories are relative to this makefile
 #---------------------------------------------------------------------------------
 BUILD		?=	release
-SOURCES		:=	../source ../source/disc_io
+SOURCES		:=	../source ../source/disc_io source
 INCLUDES	:=	../include
 DATA		:=
 LIB		:=	$(TOPDIR)/nds/lib
@@ -104,7 +104,7 @@ dist-bin:
 
 install:
 	cp lib/libfat.a $(DEVKITPRO)/libnds/lib
-	cp include/fat.h $(DEVKITPRO)/libnds/include
+	cp include/fat.h include/nitrofs.h $(DEVKITPRO)/libnds/include
 
 #---------------------------------------------------------------------------------
 else

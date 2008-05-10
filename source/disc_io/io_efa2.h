@@ -15,7 +15,7 @@
 // 'EFA2'
 #define DEVICE_TYPE_EFA2 0x32414645
 
-#include "disc_io.h"
+#include "../disc.h"
 
 // export interface
 extern const IO_INTERFACE _io_efa2;

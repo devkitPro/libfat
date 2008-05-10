@@ -46,15 +46,18 @@
 
 #include <sys/iosupport.h>
 #include <unistd.h>
+#include <string.h>
 
 #include "common.h"
 #include "partition.h"
 #include "fatfile.h"
 #include "fatdir.h"
 
-#define GBA_DEFAULT_CACHE_PAGES 2
-#define NDS_DEFAULT_CACHE_PAGES 8
-
+#ifdef GBA
+#define DEFAULT_CACHE_PAGES 2
+#else
+#define DEFAULT_CACHE_PAGES 8
+#endif
 
 const devoptab_t dotab_fat = {
 	"fat",
@@ -80,50 +83,52 @@ const devoptab_t dotab_fat = {
 };
 
 bool fatInit (u32 cacheSize, bool setAsDefaultDevice) {
-#ifdef NDS
-	bool slot1Device, slot2Device;
-	
-	// Try mounting both slots
-	slot1Device = _FAT_partition_mount (PI_SLOT_1, cacheSize);
-	slot2Device = _FAT_partition_mount (PI_SLOT_2, cacheSize);
-	
-	// Choose the default device
-	if (slot1Device) {
-		_FAT_partition_setDefaultInterface (PI_SLOT_1);
-	} else if (slot2Device) {
-		_FAT_partition_setDefaultInterface (PI_SLOT_2);
+
+	int i;
+	bool device = false, setDefault = false;
+
+	if ( PI_MAX_PARTITIONS == 1 ) {
+		if ( _FAT_partition_mount ( 0 , cacheSize) ) {
+			_FAT_partition_setDefaultInterface (0);
+		} else {
+			return false;
+		}
+
 	} else {
-		return false;
+	
+		for ( i = 1; i < PI_MAX_PARTITIONS; i++ ) {
+			device = _FAT_partition_mount ( i , cacheSize);
+			if ( device && !setDefault ) {
+				_FAT_partition_setDefaultInterface (i);
+				setDefault = true;
+			}
+		}
+		if ( !setDefault ) return false;
 	}
-
-#else	// not defined NDS
-	bool cartSlotDevice;
-
-	cartSlotDevice = _FAT_partition_mount (PI_CART_SLOT, cacheSize);
-	
-	if (cartSlotDevice) {
-		_FAT_partition_setDefaultInterface (PI_CART_SLOT);
-	} else {
-		return false;
-	}	
-	
-#endif	// defined NDS
 
 	AddDevice (&dotab_fat);
 	
 	if (setAsDefaultDevice) {
-		chdir ("fat:/");
+		char filePath[MAXPATHLEN * 2] = "fat:/";
+#ifndef GBA
+		if ( __system_argv->argvMagic == ARGV_MAGIC && __system_argv->argc >= 1 ) {
+			char ch, *ptr = filePath, *lastSlash = NULL;
+			strcpy(filePath, __system_argv->argv[0]);
+			do {
+				ch = *(ptr);
+				if (ch == '/') lastSlash=ptr;
+				ptr++;
+			} while (ch);
+			if ( NULL != lastSlash) *lastSlash = 0;
+		}
+#endif
+		chdir (filePath);
 	}
-	
 	return true;
 }
 
 bool fatInitDefault (void) {
-#ifdef NDS
-	return fatInit (NDS_DEFAULT_CACHE_PAGES, true);
-#else
-	return fatInit (GBA_DEFAULT_CACHE_PAGES, true);
-#endif
+	return fatInit (DEFAULT_CACHE_PAGES, true);
 }
 
 bool fatMountNormalInterface (PARTITION_INTERFACE partitionNumber, u32 cacheSize) {

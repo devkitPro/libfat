@@ -36,7 +36,7 @@
 #ifndef IO_M3_COMMON_H
 #define IO_M3_COMMON_H
 
-#include "disc_io.h"
+#include "../disc.h"
 
 // Values for changing mode
 #define M3_MODE_ROM 0x00400004

@@ -22,7 +22,7 @@ endif
 # all directories are relative to this makefile
 #---------------------------------------------------------------------------------
 BUILD		?=	wii_release
-SOURCES		:=	../source source
+SOURCES		:=	../source ../source/ogc_io
 INCLUDES	:=	../include
 DATA		:=
 LIBDIR		:=	$(TOPDIR)/libogc/lib

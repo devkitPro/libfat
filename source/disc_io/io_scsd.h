@@ -40,7 +40,7 @@
 // 'SCSD'
 #define DEVICE_TYPE_SCSD 0x44534353
 
-#include "disc_io.h"
+#include "../disc.h"
 
 // export interface
 extern const IO_INTERFACE _io_scsd ;

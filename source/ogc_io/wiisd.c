@@ -1,10 +1,14 @@
 /*
- io_sccf.h 
 
- Hardware Routines for reading a compact flash card
- using the Supercard CF
+	wiisd.c
 
- Copyright (c) 2006 Michael "Chishm" Chisholm
+	Hardware routines for reading and writing to the Wii's internal
+	SD slot.
+
+	Most of those functions are based on the sd loading code in twilight hack elf
+	loader by bushing, marcan, segher and tmbinc
+
+ Copyright (c) 2008 Sven "svpe" Peter <svpe@gmx.net>
 	
  Redistribution and use in source and binary forms, with or without modification,
  are permitted provided that the following conditions are met:
@@ -26,20 +30,23 @@
  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
  EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-	2006-07-11 - Chishm
-		* Original release
 */
+#ifdef __wii__
+#include "wiisd.h"
 
-#ifndef IO_SCCF_H
-#define IO_SCCF_H
+#include <gccore.h>
+#include <sdcard/wiisd_io.h>
 
-// 'SCCF'
-#define DEVICE_TYPE_SCCF 0x46434353
 
-#include "../disc.h"
+const IO_INTERFACE __io_wiisd = {
+	DEVICE_TYPE_WII,
+	FEATURE_MEDIUM_CANREAD | FEATURE_MEDIUM_CANWRITE,
+	(FN_MEDIUM_STARTUP)&sdio_Startup,
+	(FN_MEDIUM_ISINSERTED)&sdio_IsInserted,
+	(FN_MEDIUM_READSECTORS)&sdio_ReadSectors,
+	(FN_MEDIUM_WRITESECTORS)&sdio_WriteSectors,
+	(FN_MEDIUM_CLEARSTATUS)&sdio_ClearStatus,
+	(FN_MEDIUM_SHUTDOWN)&sdio_Shutdown
+};
 
-// export interface
-extern const IO_INTERFACE _io_sccf;
-
-#endif	// define IO_SCCF_H
+#endif

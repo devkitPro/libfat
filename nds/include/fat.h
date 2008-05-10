@@ -40,7 +40,7 @@ extern "C" {
   #define NDS
 #endif
 
-#include <nds/jtypes.h>
+#include <nds/ndstypes.h>
 
 typedef enum {PI_DEFAULT, PI_SLOT_1, PI_SLOT_2, PI_CUSTOM} PARTITION_INTERFACE;
 

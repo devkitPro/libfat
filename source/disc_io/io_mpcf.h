@@ -37,7 +37,7 @@
 // 'MPCF'
 #define DEVICE_TYPE_MPCF 0x4643504D
 
-#include "disc_io.h"
+#include "../disc.h"
 
 // export interface
 extern const IO_INTERFACE _io_mpcf ;

@@ -34,7 +34,7 @@
 #ifndef IO_NJSD_H
 #define IO_NJSD_H
 
-#include "disc_io.h"
+#include "../disc.h"
 
 #ifdef NDS
 

@@ -36,7 +36,7 @@
 // 'FCSR'
 #define DEVICE_TYPE_FCSR 0x52534346
 
-#include "disc_io.h"
+#include "../disc.h"
 
 // export interface
 extern const IO_INTERFACE _io_fcsr ;

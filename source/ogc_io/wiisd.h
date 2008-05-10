@@ -1,10 +1,11 @@
 /*
- io_sccf.h 
 
- Hardware Routines for reading a compact flash card
- using the Supercard CF
+	wiisd.c
 
- Copyright (c) 2006 Michael "Chishm" Chisholm
+	Hardware routines for reading and writing to the Wii's internal
+	SD slot.
+
+ Copyright (c) 2008 Sven "svpe" Peter <svpe@gmx.net>
 	
  Redistribution and use in source and binary forms, with or without modification,
  are permitted provided that the following conditions are met:
@@ -26,20 +27,15 @@
  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
  EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-	2006-07-11 - Chishm
-		* Original release
 */
 
-#ifndef IO_SCCF_H
-#define IO_SCCF_H
+#ifndef __WIISD_H__
+#define __WIISD_H__
 
-// 'SCCF'
-#define DEVICE_TYPE_SCCF 0x46434353
-
+#include <gccore.h>
 #include "../disc.h"
 
-// export interface
-extern const IO_INTERFACE _io_sccf;
 
-#endif	// define IO_SCCF_H
+extern const IO_INTERFACE __io_wiisd;
+
+#endif

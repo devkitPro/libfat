@@ -36,7 +36,7 @@
 #ifndef IO_SC_COMMON_H
 #define IO_SC_COMMON_H
 
-#include "disc_io.h"
+#include "../disc.h"
 
 // Values for changing mode
 #define SC_MODE_FLASH 0x1510
