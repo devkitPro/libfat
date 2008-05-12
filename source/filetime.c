@@ -56,7 +56,7 @@
 #define MIN_DAY 1
 
 u16 _FAT_filetime_getTimeFromRTC (void) {
-#ifdef NDS
+#ifndef GBA
 	struct tm timeParts;
 	time_t epochTime;
 	
@@ -83,7 +83,7 @@ u16 _FAT_filetime_getTimeFromRTC (void) {
 
 
 u16 _FAT_filetime_getDateFromRTC (void) {
-#ifdef NDS
+#ifndef GBA
 	struct tm timeParts;
 	time_t epochTime;
 	
