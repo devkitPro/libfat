@@ -56,6 +56,10 @@
 	2008-05-12 - Chishm
 		* Modified WinterMute's seek then write fix for elegance
 		* Removed resetPosition
+
+	2008-05-12 - WinterMute
+		* Modified Chishm's elegant fix to reset the read/write positions
+
 */
 
 
@@ -594,6 +598,12 @@ int _FAT_write_r (struct _reent *r,int fd, const char *ptr, int len) {
 		file->appendPosition.cluster = file->startCluster;
 		file->appendPosition.sector = 0;
 		file->appendPosition.byte = 0;
+
+		if ( file->currentPosition < partition->bytesPerCluster ) {
+			file->rwPosition.cluster = file->startCluster;
+			file->rwPosition.sector =  (file->currentPosition % partition->bytesPerCluster) / BYTES_PER_READ;
+			file->rwPosition.byte = file->currentPosition % BYTES_PER_READ;
+		}
 	}
 		
 	if (file->append) {
