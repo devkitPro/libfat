@@ -52,6 +52,10 @@
 	2007-11-04 - Chishm
 		* file_extend_r renamed to _FAT_file_extend_r
 		* A cluster is only allocated for a file when data is written, instead of when the file is opened
+	
+	2008-05-12 - Chishm
+		* Modified WinterMute's seek then write fix for elegance
+		* Removed resetPosition
 */
 
 
@@ -67,20 +71,6 @@
 #include "file_allocation_table.h"
 #include "bit_ops.h"
 #include "filetime.h"
-
-static void _FAT_file_resetPosition (FILE_STRUCT* file) {
-	PARTITION* partition = file->partition;
-
-	if ( file->currentPosition < partition->bytesPerCluster ) {
-		file->rwPosition.cluster = file->startCluster;
-		file->rwPosition.sector =  (file->currentPosition % partition->bytesPerCluster) / BYTES_PER_READ;
-		file->rwPosition.byte = file->currentPosition % BYTES_PER_READ;
-	}
-	
-	file->appendPosition.cluster = _FAT_fat_lastCluster (partition, file->startCluster);
-	file->appendPosition.sector = (file->filesize % partition->bytesPerCluster) / BYTES_PER_READ;
-	file->appendPosition.byte = file->filesize % BYTES_PER_READ;
-}
 
 int _FAT_open_r (struct _reent *r, void *fileStruct, const char *path, int flags, int mode) {
 	PARTITION* partition = NULL;
@@ -218,7 +208,7 @@ int _FAT_open_r (struct _reent *r, void *fileStruct, const char *path, int flags
 	// Truncate the file if requested
 	if ((flags & O_TRUNC) && file->write && (file->startCluster != 0)) {
 		_FAT_fat_clearLinks (partition, file->startCluster);
-		file->startCluster = 0;
+		file->startCluster = CLUSTER_FREE;
 		file->filesize = 0;
 	}
 
@@ -226,8 +216,14 @@ int _FAT_open_r (struct _reent *r, void *fileStruct, const char *path, int flags
 	file->dirEntryStart = dirEntry.dataStart;		// Points to the start of the LFN entries of a file, or the alias for no LFN
 	file->dirEntryEnd = dirEntry.dataEnd;	
 	
+	// Reset read/write and append pointers
 	file->currentPosition = 0;
-	_FAT_file_resetPosition (file);
+	file->rwPosition.cluster = file->startCluster;
+	file->rwPosition.sector =  0;
+	file->rwPosition.byte = 0;
+	file->appendPosition.cluster = _FAT_fat_lastCluster (partition, file->startCluster);
+	file->appendPosition.sector = (file->filesize % partition->bytesPerCluster) / BYTES_PER_READ;
+	file->appendPosition.byte = file->filesize % BYTES_PER_READ;
 
 	// Check if the end of the file is on the end of a cluster
 	if ( (file->filesize > 0) && ((file->filesize % partition->bytesPerCluster)==0) ){
@@ -312,12 +308,12 @@ int _FAT_read_r (struct _reent *r, int fd, char *ptr, int len) {
 	// Make sure we can actually read from the file
 	if ((file == NULL) || !file->inUse || !file->read) {
 		r->_errno = EBADF;
-		return 0;
+		return -1;
 	}
 
 	// Don't try to read if the read pointer is past the end of file
 	if (file->currentPosition >= file->filesize || file->startCluster == CLUSTER_FREE) {
-		return 0;
+		return -1;
 	}
 	
 	// Don't read past end of file
@@ -573,7 +569,7 @@ int _FAT_write_r (struct _reent *r,int fd, const char *ptr, int len) {
 	// Make sure we can actually write to the file
 	if ((file == NULL) || !file->inUse || !file->write) {
 		r->_errno = EBADF;
-		return 0;
+		return -1;
 	}
 	
 	// Short circuit cases where len is 0 (or less)
@@ -585,12 +581,21 @@ int _FAT_write_r (struct _reent *r,int fd, const char *ptr, int len) {
 	cache = file->partition->cache;
 	remain = len;
 
-	// Get a new cluster for the file if required
+	// Get a new cluster for the start of the file if required
 	if (file->startCluster == CLUSTER_FREE) {
-		file->startCluster = _FAT_fat_linkFreeCluster (partition, CLUSTER_FREE);
-		_FAT_file_resetPosition (file);
+		tempNextCluster = _FAT_fat_linkFreeCluster (partition, CLUSTER_FREE);
+		if (!_FAT_fat_isValidCluster(partition, tempNextCluster)) {
+			// Couldn't get a cluster, so abort immediately
+			r->_errno = ENOSPC;
+			return -1;
+		}
+		file->startCluster = tempNextCluster;
+		// Appending starts at the begining for a 0 byte file
+		file->appendPosition.cluster = file->startCluster;
+		file->appendPosition.sector = 0;
+		file->appendPosition.byte = 0;
 	}
-	
+		
 	if (file->append) {
 		position = file->appendPosition;
 		flagAppending = true;
@@ -598,7 +603,7 @@ int _FAT_write_r (struct _reent *r,int fd, const char *ptr, int len) {
 		// If the write pointer is past the end of the file, extend the file to that size
 		if (file->currentPosition > file->filesize) {
 			if (!_FAT_file_extend_r (r, file)) {
-				return 0;
+				return -1;
 			}
 		}
 	
