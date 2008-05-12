@@ -71,11 +71,11 @@
 static void _FAT_file_resetPosition (FILE_STRUCT* file) {
 	PARTITION* partition = file->partition;
 
-	file->currentPosition = 0;
-	
-	file->rwPosition.cluster = file->startCluster;
-	file->rwPosition.sector = 0;
-	file->rwPosition.byte = 0;
+	if ( file->currentPosition < partition->bytesPerCluster ) {
+		file->rwPosition.cluster = file->startCluster;
+		file->rwPosition.sector =  (file->currentPosition % partition->bytesPerCluster) / BYTES_PER_READ;
+		file->rwPosition.byte = file->currentPosition % BYTES_PER_READ;
+	}
 	
 	file->appendPosition.cluster = _FAT_fat_lastCluster (partition, file->startCluster);
 	file->appendPosition.sector = (file->filesize % partition->bytesPerCluster) / BYTES_PER_READ;
@@ -226,6 +226,7 @@ int _FAT_open_r (struct _reent *r, void *fileStruct, const char *path, int flags
 	file->dirEntryStart = dirEntry.dataStart;		// Points to the start of the LFN entries of a file, or the alias for no LFN
 	file->dirEntryEnd = dirEntry.dataEnd;	
 	
+	file->currentPosition = 0;
 	_FAT_file_resetPosition (file);
 
 	// Check if the end of the file is on the end of a cluster
