@@ -594,16 +594,15 @@ int _FAT_write_r (struct _reent *r,int fd, const char *ptr, int len) {
 			return -1;
 		}
 		file->startCluster = tempNextCluster;
+
 		// Appending starts at the begining for a 0 byte file
 		file->appendPosition.cluster = file->startCluster;
 		file->appendPosition.sector = 0;
 		file->appendPosition.byte = 0;
 
-		if ( file->currentPosition < partition->bytesPerCluster ) {
-			file->rwPosition.cluster = file->startCluster;
-			file->rwPosition.sector =  (file->currentPosition % partition->bytesPerCluster) / BYTES_PER_READ;
-			file->rwPosition.byte = file->currentPosition % BYTES_PER_READ;
-		}
+		file->rwPosition.cluster = file->startCluster;
+		file->rwPosition.sector =  0;
+		file->rwPosition.byte = 0;
 	}
 		
 	if (file->append) {
