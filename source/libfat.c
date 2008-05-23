@@ -52,6 +52,7 @@
 #include "partition.h"
 #include "fatfile.h"
 #include "fatdir.h"
+#include "lock.h"
 
 #ifdef GBA
 #define DEFAULT_CACHE_PAGES 2
@@ -127,6 +128,9 @@ bool fatInit (u32 cacheSize, bool setAsDefaultDevice) {
 #endif
 		chdir (filePath);
 	}
+
+	_FAT_lock_init();
+
 	return true;
 }
 
