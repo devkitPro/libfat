@@ -37,7 +37,6 @@ CFLAGS	+=	$(INCLUDE) -DGBA
 CXXFLAGS	:=	$(CFLAGS)
 
 ASFLAGS	:=	-g $(ARCH)
-LDFLAGS	=	-specs=gba.specs -g $(ARCH) -mno-fpu -Wl,-Map,$(notdir $*.map)
 
 ifneq ($(BUILD),debug)
 export GBABIN	:=	$(LIB)/libfat.a
