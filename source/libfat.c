@@ -112,14 +112,17 @@ bool fatInit (u32 cacheSize, bool setAsDefaultDevice) {
 		char filePath[MAXPATHLEN * 2] = "fat:/";
 #ifndef GBA
 		if ( __system_argv->argvMagic == ARGV_MAGIC && __system_argv->argc >= 1 ) {
-			char ch, *ptr = filePath, *lastSlash = NULL;
-			strcpy(filePath, __system_argv->argv[0]);
-			do {
-				ch = *(ptr);
-				if (ch == '/') lastSlash=ptr;
-				ptr++;
-			} while (ch);
-			if ( NULL != lastSlash) *lastSlash = 0;
+		
+			if ( !strncasecmp( __system_argv->argv[0], "fat", 3)) {
+			
+				strcpy(filePath, __system_argv->argv[0]);
+				char *lastSlash = strrchr( filePath, '/' );
+
+				if ( NULL != lastSlash) {
+					if ( *(lastSlash - 1) == ':') lastSlash++;
+					*lastSlash = 0;
+				}
+			}
 		}
 #endif
 		chdir (filePath);
