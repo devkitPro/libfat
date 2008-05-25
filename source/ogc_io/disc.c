@@ -79,8 +79,10 @@
 
 
 const IO_INTERFACE* ioInterfaces[] = {
+#ifdef __gamecube__
 	&__io_gcsda,
 	&__io_gcsdb,
+#endif
 #ifdef __wii__
 	&__io_wiisd
 #endif
@@ -137,12 +139,7 @@ const IO_INTERFACE* _FAT_disc_gcFindInterfaceSlot(int slot)
 const IO_INTERFACE* _FAT_disc_findInterface(void)
 {
 #ifdef __wii__
-	const IO_INTERFACE *disc;
-
-	disc = _FAT_disc_wiiFindInterface();
-	if(disc == NULL)
-		disc = _FAT_disc_gcFindInterface();
-	return disc;
+	return _FAT_disc_wiiFindInterface();
 #else
 	return _FAT_disc_gcFindInterface();
 #endif
@@ -152,12 +149,14 @@ const IO_INTERFACE* _FAT_disc_findInterfaceSlot (PARTITION_INTERFACE partitionNu
 {
 	switch(partitionNumber)
 	{
+#ifdef __gamecube__
 		case PI_SDGECKO_A:
 			return _FAT_disc_gcFindInterfaceSlot(0);
 			break;
 		case PI_SDGECKO_B:
 			return _FAT_disc_gcFindInterfaceSlot(1);
 			break;
+#endif
 #ifdef __wii__
 		case PI_INTERNAL_SD:
 			return _FAT_disc_wiiFindInterface();
