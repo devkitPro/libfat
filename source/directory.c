@@ -58,6 +58,10 @@
 		
 	2007-11-16 - Chishm
 		* Fixed LFN creation with character codes > 0x7F
+		
+	2008-08-02 - Chishm
+		* Correct cluster given on FAT32 when .. entry is included in path to subdirectory
+		* Fixed creation of long filename entry for all-caps filenames longer than 8 characters
 */
 
 #include <string.h>
@@ -632,6 +636,13 @@ bool _FAT_directory_entryFromPath (PARTITION* partition, DIR_ENTRY* entry, const
 	}
 
 	if (found && !notFound) {
+		if (partition->filesysType == FS_FAT32 && (entry->entryData[DIR_ENTRY_attributes] & ATTRIB_DIR) &&
+			_FAT_directory_entryGetCluster (entry->entryData) == CLUSTER_ROOT) 
+		{
+			// On FAT32 it should specify an actual cluster for the root entry,
+			// not cluster 0 as on FAT16
+			_FAT_directory_getRootEntry (partition, entry);
+		}
 		return true;
 	} else {
 		return false;
@@ -828,6 +839,11 @@ static int _FAT_directory_createAlias (char* alias, const char* lfn) {
 		alias[aliasPos] = (char)oemChar;
 		aliasPos++;
 		lfnPos += bytesUsed;
+	}
+	
+	if (lfn[lfnPos] != '.' && lfn[lfnPos] != '\0') {
+		// Name was more than 8 characters long
+		lossyConversion = true;
 	}
 	
 	// Alias extension
