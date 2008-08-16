@@ -34,6 +34,9 @@
 
 	2007-10-25 - Chishm
 		* Use CLUSTER_ERROR when an error occurs with the FAT, not CLUSTER_FREE
+		
+	2008-08-17 - Chishm
+		* Added CLUSTER_ROOT definition
 */
 
 #ifndef _FAT_H
@@ -45,6 +48,7 @@
 #define CLUSTER_EOF_16	0xFFFF
 #define	CLUSTER_EOF		0x0FFFFFFF
 #define CLUSTER_FREE	0x00000000
+#define CLUSTER_ROOT	0x00000000
 #define CLUSTER_FIRST	0x00000002
 #define CLUSTER_ERROR	0xFFFFFFFF
 
