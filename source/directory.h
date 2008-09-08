@@ -31,6 +31,10 @@
 	
 	2007-11-01 - Chishm
 		* Added unicode support
+		
+	2008-09-07 - Chishm
+		* Don't read high 16 bits of start cluster from a directory entry on non-FAT32 partititions, in case it contains non-zero data
+			* Thanks to Chris Liu
 */
 
 #ifndef _DIRECTORY_H
@@ -162,7 +166,7 @@ bool _FAT_directory_addEntry (PARTITION* partition, DIR_ENTRY* entry, u32 dirClu
 /*
 Get the start cluster of a file from it's entry data
 */
-u32 _FAT_directory_entryGetCluster (const u8* entryData); 
+u32 _FAT_directory_entryGetCluster (PARTITION* partition, const u8* entryData); 
 
 /* 
 Fill in the file name and entry data of DIR_ENTRY* entry. 

@@ -62,6 +62,10 @@
 	2008-08-02 - Chishm
 		* Correct cluster given on FAT32 when .. entry is included in path to subdirectory
 		* Fixed creation of long filename entry for all-caps filenames longer than 8 characters
+		
+	2008-09-07 - Chishm
+		* Don't read high 16 bits of start cluster from a directory entry on non-FAT32 partititions, in case it contains non-zero data
+			* Thanks to Chris Liu
 */
 
 #include <string.h>
@@ -272,8 +276,13 @@ static bool _FAT_directory_entryGetAlias (const u8* entryData, char* destName) {
 	return (destName[0] != '\0');
 }
 
-u32 _FAT_directory_entryGetCluster (const u8* entryData) {
-	return u8array_to_u16(entryData,DIR_ENTRY_cluster) | (u8array_to_u16(entryData, DIR_ENTRY_clusterHigh) << 16);
+u32 _FAT_directory_entryGetCluster (PARTITION* partition, const u8* entryData) {
+	if (partition->filesysType == FS_FAT32) {
+		// Only use high 16 bits of start cluster when we are certain they are correctly defined
+		return u8array_to_u16(entryData,DIR_ENTRY_cluster) | (u8array_to_u16(entryData, DIR_ENTRY_clusterHigh) << 16);
+	} else {
+		return u8array_to_u16(entryData,DIR_ENTRY_cluster);
+	}
 }
 
 static bool _FAT_directory_incrementDirEntryPosition (PARTITION* partition, DIR_ENTRY_POSITION* entryPosition, bool extendDirectory) {
@@ -620,7 +629,7 @@ bool _FAT_directory_entryFromPath (PARTITION* partition, DIR_ENTRY* entry, const
 			// Check that we reached the end of the path
 			found = true;
 		} else if (entry->entryData[DIR_ENTRY_attributes] & ATTRIB_DIR) {
-			dirCluster = _FAT_directory_entryGetCluster (entry->entryData);
+			dirCluster = _FAT_directory_entryGetCluster (partition, entry->entryData);
 			pathPosition = nextPathPosition;
 			// Consume separator(s)
 			while (pathPosition[0] == DIR_SEPARATOR) {
@@ -637,7 +646,7 @@ bool _FAT_directory_entryFromPath (PARTITION* partition, DIR_ENTRY* entry, const
 
 	if (found && !notFound) {
 		if (partition->filesysType == FS_FAT32 && (entry->entryData[DIR_ENTRY_attributes] & ATTRIB_DIR) &&
-			_FAT_directory_entryGetCluster (entry->entryData) == CLUSTER_ROOT) 
+			_FAT_directory_entryGetCluster (partition, entry->entryData) == CLUSTER_ROOT) 
 		{
 			// On FAT32 it should specify an actual cluster for the root entry,
 			// not cluster 0 as on FAT16
@@ -1090,7 +1099,7 @@ bool _FAT_directory_chdir (PARTITION* partition, const char* path) {
 		return false;
 	}
 
-	partition->cwdCluster = _FAT_directory_entryGetCluster (entry.entryData);
+	partition->cwdCluster = _FAT_directory_entryGetCluster (partition, entry.entryData);
 
 	return true;
 }
@@ -1099,7 +1108,7 @@ void _FAT_directory_entryStat (PARTITION* partition, DIR_ENTRY* entry, struct st
 	// Fill in the stat struct
 	// Some of the values are faked for the sake of compatibility
 	st->st_dev = _FAT_disc_hostType(partition->disc);					// The device is the 32bit ioType value
-  	st->st_ino = (ino_t)(_FAT_directory_entryGetCluster(entry->entryData));		// The file serial number is the start cluster
+  	st->st_ino = (ino_t)(_FAT_directory_entryGetCluster(partition, entry->entryData));		// The file serial number is the start cluster
 	st->st_mode = (_FAT_directory_isDirectory(entry) ? S_IFDIR : S_IFREG) |
 		(S_IRUSR | S_IRGRP | S_IROTH) |
 		(_FAT_directory_isWritable (entry) ? (S_IWUSR | S_IWGRP | S_IWOTH) : 0);		// Mode bits based on dirEntry ATTRIB byte

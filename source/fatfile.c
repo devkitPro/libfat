@@ -170,7 +170,7 @@ int _FAT_open_r (struct _reent *r, void *fileStruct, const char *path, int flags
 					r->_errno = ENOTDIR;
 					return -1;
 				}
-				dirCluster = _FAT_directory_entryGetCluster (dirEntry.entryData);
+				dirCluster = _FAT_directory_entryGetCluster (partition, dirEntry.entryData);
 				// Move the pathEnd past the last DIR_SEPARATOR
 				pathEnd += 1;
 			}
@@ -216,7 +216,7 @@ int _FAT_open_r (struct _reent *r, void *fileStruct, const char *path, int flags
 	// Associate this file with a particular partition
 	file->partition = partition;
 	
-	file->startCluster = _FAT_directory_entryGetCluster (dirEntry.entryData);
+	file->startCluster = _FAT_directory_entryGetCluster (partition, dirEntry.entryData);
 
 	// Truncate the file if requested
 	if ((flags & O_TRUNC) && file->write && (file->startCluster != 0)) {

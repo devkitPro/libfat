@@ -151,7 +151,7 @@ int _FAT_unlink_r (struct _reent *r, const char *path) {
 		return -1;
 	}
 	
-	cluster = _FAT_directory_entryGetCluster (dirEntry.entryData);
+	cluster = _FAT_directory_entryGetCluster (partition, dirEntry.entryData);
 
 	
 	// If this is a directory, make sure it is empty
@@ -319,7 +319,7 @@ int _FAT_rename_r (struct _reent *r, const char *oldName, const char *newName) {
 			r->_errno = ENOTDIR;
 			return -1;
 		}
-		dirCluster = _FAT_directory_entryGetCluster (newDirEntry.entryData);
+		dirCluster = _FAT_directory_entryGetCluster (partition, newDirEntry.entryData);
 		// Move the pathEnd past the last DIR_SEPARATOR
 		pathEnd += 1;
 	}
@@ -414,7 +414,7 @@ int _FAT_mkdir_r (struct _reent *r, const char *path, int mode) {
 			r->_errno = ENOTDIR;
 			return -1;
 		}
-		parentCluster = _FAT_directory_entryGetCluster (dirEntry.entryData);
+		parentCluster = _FAT_directory_entryGetCluster (partition, dirEntry.entryData);
 		// Move the pathEnd past the last DIR_SEPARATOR
 		pathEnd += 1;
 	}
@@ -564,7 +564,7 @@ DIR_ITER* _FAT_diropen_r(struct _reent *r, DIR_ITER *dirState, const char *path)
 	}
 
 	// Save the start cluster for use when resetting the directory data
-	state->startCluster = _FAT_directory_entryGetCluster (dirEntry.entryData);
+	state->startCluster = _FAT_directory_entryGetCluster (state->partition, dirEntry.entryData);
 	
 	// Get the first entry for use with a call to dirnext
 	state->validEntry = 
