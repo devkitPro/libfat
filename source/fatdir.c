@@ -46,6 +46,9 @@
 	2007-10-25 - Chishm
 		* Use CLUSTER_ERROR when an error occurs with the FAT, not CLUSTER_FREE
 		* Added statvfs functionality
+		
+	2008-09-11 - Chishm
+		* Fixed unlink not freeing cluster chains -- discovered by rodries
 */
 
 #include <string.h>
@@ -169,7 +172,7 @@ int _FAT_unlink_r (struct _reent *r, const char *path) {
 		}
 	}
 
-	if (!_FAT_fat_isValidCluster(partition, cluster)) {
+	if (_FAT_fat_isValidCluster(partition, cluster)) {
 		// Remove the cluster chain for this file
 		if (!_FAT_fat_clearLinks (partition, cluster)) {
 			r->_errno = EIO;
