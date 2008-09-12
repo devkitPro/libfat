@@ -60,6 +60,8 @@
 	2008-05-12 - WinterMute
 		* Modified Chishm's elegant fix to reset the read/write positions
 
+	2008-11-12 - Chishm
+		* Only set append position when file is opened for append, as suggested by rodries. Improves open speed for large files.
 */
 
 
@@ -229,26 +231,32 @@ int _FAT_open_r (struct _reent *r, void *fileStruct, const char *path, int flags
 	file->dirEntryStart = dirEntry.dataStart;		// Points to the start of the LFN entries of a file, or the alias for no LFN
 	file->dirEntryEnd = dirEntry.dataEnd;	
 	
-	// Reset read/write and append pointers
+	// Reset read/write pointer
 	file->currentPosition = 0;
 	file->rwPosition.cluster = file->startCluster;
 	file->rwPosition.sector =  0;
 	file->rwPosition.byte = 0;
-	file->appendPosition.cluster = _FAT_fat_lastCluster (partition, file->startCluster);
-	file->appendPosition.sector = (file->filesize % partition->bytesPerCluster) / BYTES_PER_READ;
-	file->appendPosition.byte = file->filesize % BYTES_PER_READ;
-
-	// Check if the end of the file is on the end of a cluster
-	if ( (file->filesize > 0) && ((file->filesize % partition->bytesPerCluster)==0) ){
-		// Set flag to allocate a new cluster
-		file->appendPosition.sector = partition->sectorsPerCluster;
-		file->appendPosition.byte = 0;
-	}
-
+	
 	if (flags & O_APPEND) {
 		file->append = true;
+		
+		// Set append pointer to the end of the file
+		file->appendPosition.cluster = _FAT_fat_lastCluster (partition, file->startCluster);
+		file->appendPosition.sector = (file->filesize % partition->bytesPerCluster) / BYTES_PER_READ;
+		file->appendPosition.byte = file->filesize % BYTES_PER_READ;
+
+		// Check if the end of the file is on the end of a cluster
+		if ( (file->filesize > 0) && ((file->filesize % partition->bytesPerCluster)==0) ){
+			// Set flag to allocate a new cluster
+			file->appendPosition.sector = partition->sectorsPerCluster;
+			file->appendPosition.byte = 0;
+		}
+	} else {
+		file->append = false;
+		// Use something sane for the append pointer, so the whole file struct contains known values
+		file->appendPosition = file->rwPosition;
 	}
-	
+
 	file->inUse = true;
 	
 	partition->openFileCount += 1;
