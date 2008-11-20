@@ -25,18 +25,6 @@
  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
  EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-	2006-07-11 - Chishm
-		* Original release
-
-	2006-10-01 - Chishm
-		* Added _FAT_fat_linkFreeClusterCleared to clear a cluster when it is allocated
-
-	2007-10-25 - Chishm
-		* Use CLUSTER_ERROR when an error occurs with the FAT, not CLUSTER_FREE
-		
-	2008-08-17 - Chishm
-		* Added CLUSTER_ROOT definition
 */
 
 #ifndef _FAT_H
@@ -56,22 +44,26 @@
 #define CLUSTERS_PER_FAT16 65525
 
 
-u32 _FAT_fat_nextCluster(PARTITION* partition, u32 cluster);
+uint32_t _FAT_fat_nextCluster(PARTITION* partition, uint32_t cluster);
 
-u32 _FAT_fat_linkFreeCluster(PARTITION* partition, u32 cluster);
-u32 _FAT_fat_linkFreeClusterCleared (PARTITION* partition, u32 cluster);
+uint32_t _FAT_fat_linkFreeCluster(PARTITION* partition, uint32_t cluster);
+uint32_t _FAT_fat_linkFreeClusterCleared (PARTITION* partition, uint32_t cluster);
 
-bool _FAT_fat_clearLinks (PARTITION* partition, u32 cluster);
+bool _FAT_fat_clearLinks (PARTITION* partition, uint32_t cluster);
 
-u32 _FAT_fat_lastCluster (PARTITION* partition, u32 cluster);
+uint32_t _FAT_fat_trimChain (PARTITION* partition, uint32_t startCluster, unsigned int chainLength);
 
-u32 _FAT_fat_freeClusterCount (PARTITION* partition);
+uint32_t _FAT_fat_lastCluster (PARTITION* partition, uint32_t cluster);
 
-static inline u32 _FAT_fat_clusterToSector (PARTITION* partition, u32 cluster) {
-	return (cluster >= CLUSTER_FIRST) ? ((cluster - CLUSTER_FIRST) * partition->sectorsPerCluster) + partition->dataStart : partition->rootDirStart;
+unsigned int _FAT_fat_freeClusterCount (PARTITION* partition);
+
+static inline sec_t _FAT_fat_clusterToSector (PARTITION* partition, uint32_t cluster) {
+	return (cluster >= CLUSTER_FIRST) ? 
+		((cluster - CLUSTER_FIRST) * (sec_t)partition->sectorsPerCluster) + partition->dataStart : 
+		partition->rootDirStart;
 }
 
-static inline bool _FAT_fat_isValidCluster (PARTITION* partition, u32 cluster) {
+static inline bool _FAT_fat_isValidCluster (PARTITION* partition, uint32_t cluster) {
 	return (cluster >= CLUSTER_FIRST) && (cluster <= partition->fat.lastCluster /* This will catch CLUSTER_ERROR */);
 }
 

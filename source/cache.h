@@ -31,9 +31,6 @@
  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
  EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-	2006-07-11 - Chishm
-		* Original release
 */
 
 #ifndef _CACHE_H
@@ -45,16 +42,16 @@
 #define CACHE_PAGE_SIZE BYTES_PER_READ
 
 typedef struct {
-	u32 sector;
-	u32 count;
-	bool dirty;
+	sec_t        sector;
+	unsigned int count;
+	bool         dirty;
 } CACHE_ENTRY;
 
 typedef struct {
-	const IO_INTERFACE* disc;
-	u32 numberOfPages;
-	CACHE_ENTRY* cacheEntries;
-	u8* pages;
+	const DISC_INTERFACE* disc;
+	unsigned int          numberOfPages;
+	CACHE_ENTRY*          cacheEntries;
+	uint8_t*              pages;
 } CACHE;
 
 
@@ -65,43 +62,43 @@ offset is the position to start reading from
 size is the amount of data to read
 Precondition: offset + size <= BYTES_PER_READ
 */
-bool _FAT_cache_readPartialSector (CACHE* cache, void* buffer, u32 sector, u32 offset, u32 size);
+bool _FAT_cache_readPartialSector (CACHE* cache, void* buffer, sec_t sector, unsigned int offset, size_t size);
 
-bool _FAT_cache_readLittleEndianValue (CACHE* cache, u32 *value, u32 sector, u32 offset, u32 num_bytes);
+bool _FAT_cache_readLittleEndianValue (CACHE* cache, uint32_t *value, sec_t sector, unsigned int offset, int num_bytes);
 
 /*
 Write data to a sector in the cache
 If the sector is not in the cache, it will be swapped in.
 When the sector is swapped out, the data will be written to the disc
-offset is the position to start reading from
-size is the amount of data to read
+offset is the position to start writing to
+size is the amount of data to write
 Precondition: offset + size <= BYTES_PER_READ
 */
-bool _FAT_cache_writePartialSector (CACHE* cache, const void* buffer, u32 sector, u32 offset, u32 size);
+bool _FAT_cache_writePartialSector (CACHE* cache, const void* buffer, sec_t sector, unsigned int offset, size_t size);
 
-bool _FAT_cache_writeLittleEndianValue (CACHE* cache, const u32 value, u32 sector, u32 offset, u32 num_bytes);
+bool _FAT_cache_writeLittleEndianValue (CACHE* cache, const uint32_t value, sec_t sector, unsigned int offset, int num_bytes);
 
 /*
 Write data to a sector in the cache, zeroing the sector first
 If the sector is not in the cache, it will be swapped in.
 When the sector is swapped out, the data will be written to the disc
-offset is the position to start reading from
-size is the amount of data to read
+offset is the position to start writing to
+size is the amount of data to write
 Precondition: offset + size <= BYTES_PER_READ
 */
-bool _FAT_cache_eraseWritePartialSector (CACHE* cache, const void* buffer, u32 sector, u32 offset, u32 size);
+bool _FAT_cache_eraseWritePartialSector (CACHE* cache, const void* buffer, sec_t sector, unsigned int offset, size_t size);
 
 /*
 Read a full sector from the cache
 */
-static inline bool _FAT_cache_readSector (CACHE* cache, void* buffer, u32 sector) {
+static inline bool _FAT_cache_readSector (CACHE* cache, void* buffer, sec_t sector) {
 	return _FAT_cache_readPartialSector (cache, buffer, sector, 0, BYTES_PER_READ);
 }
 
 /*
 Write a full sector to the cache
 */
-static inline bool _FAT_cache_writeSector (CACHE* cache, const void* buffer, u32 sector) {
+static inline bool _FAT_cache_writeSector (CACHE* cache, const void* buffer, sec_t sector) {
 	return _FAT_cache_writePartialSector (cache, buffer, sector, 0, BYTES_PER_READ);
 }
 
@@ -115,7 +112,7 @@ Clear out the contents of the cache without writing any dirty sectors first
 */
 void _FAT_cache_invalidate (CACHE* cache);
 
-CACHE* _FAT_cache_constructor (u32 numberOfPages, const IO_INTERFACE* discInterface);
+CACHE* _FAT_cache_constructor (unsigned int numberOfPages, const DISC_INTERFACE* discInterface);
 
 void _FAT_cache_destructor (CACHE* cache);
 

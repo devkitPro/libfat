@@ -25,21 +25,6 @@
  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
  EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-	2006-07-11 - Chishm
-		* Original release
-		
-	2006-07-11 - Chishm
-		* Made several fixes related to free clusters, thanks to Loopy
-		
-	2006-10-01 - Chishm
-		* Added _FAT_fat_linkFreeClusterCleared to clear a cluster when it is allocated
-
-	2007-10-25 - Chishm
-		* Use CLUSTER_ERROR when an error occurs with the FAT, not CLUSTER_FREE
-		
-	2007-11-04 - Chishm
-		* _FAT_fat_nextCluster returns CLUSTER_FREE when input cluster is CLUSTER_FREE
 */
 
 
@@ -50,10 +35,10 @@
 /*
 Gets the cluster linked from input cluster
 */
-u32 _FAT_fat_nextCluster(PARTITION* partition, u32 cluster)
+uint32_t _FAT_fat_nextCluster(PARTITION* partition, uint32_t cluster)
 {
-	u32 nextCluster = CLUSTER_FREE;
-	u32 sector;
+	uint32_t nextCluster = CLUSTER_FREE;
+	sec_t sector;
 	int offset;
 	
 	if (cluster == CLUSTER_FREE) {
@@ -66,7 +51,9 @@ u32 _FAT_fat_nextCluster(PARTITION* partition, u32 cluster)
 			return CLUSTER_ERROR;
 			break;
 			
-		case FS_FAT12:
+		case FS_FAT12: 
+		{
+			u32 nextCluster_h;
 			sector = partition->fat.fatStart + (((cluster * 3) / 2) / BYTES_PER_READ);
 			offset = ((cluster * 3) / 2) % BYTES_PER_READ;
 
@@ -79,7 +66,7 @@ u32 _FAT_fat_nextCluster(PARTITION* partition, u32 cluster)
 				offset = 0;
 				sector++;
 			}
-			u32 nextCluster_h = 0;
+			nextCluster_h = 0;
 
 			_FAT_cache_readLittleEndianValue (partition->cache, &nextCluster_h, sector, offset, sizeof(u8));
 			nextCluster |= (nextCluster_h << 8);
@@ -96,15 +83,14 @@ u32 _FAT_fat_nextCluster(PARTITION* partition, u32 cluster)
 			}
 
 			break;
-			
+		}
 		case FS_FAT16:
 			sector = partition->fat.fatStart + ((cluster << 1) / BYTES_PER_READ);
 			offset = (cluster % (BYTES_PER_READ >> 1)) << 1;
 			
 			_FAT_cache_readLittleEndianValue (partition->cache, &nextCluster, sector, offset, sizeof(u16));
 			
-			if (nextCluster >= 0xFFF7)
-			{
+			if (nextCluster >= 0xFFF7) {
 				nextCluster = CLUSTER_EOF;
 			}
 			break;
@@ -115,8 +101,7 @@ u32 _FAT_fat_nextCluster(PARTITION* partition, u32 cluster)
 			
 			_FAT_cache_readLittleEndianValue (partition->cache, &nextCluster, sector, offset, sizeof(u32));
 			
-			if (nextCluster >= 0x0FFFFFF7)
-			{
+			if (nextCluster >= 0x0FFFFFF7) {
 				nextCluster = CLUSTER_EOF;
 			}
 			break;
@@ -133,10 +118,10 @@ u32 _FAT_fat_nextCluster(PARTITION* partition, u32 cluster)
 writes value into the correct offset within a partition's FAT, based 
 on the cluster number.
 */
-static bool _FAT_fat_writeFatEntry (PARTITION* partition, u32 cluster, u32 value) {
-	u32 sector;
+static bool _FAT_fat_writeFatEntry (PARTITION* partition, uint32_t cluster, uint32_t value) {
+	sec_t sector;
 	int offset;
-	u32 oldValue;
+	uint32_t oldValue;
 
 	if ((cluster < CLUSTER_FIRST) || (cluster > partition->fat.lastCluster /* This will catch CLUSTER_ERROR */))
 	{
@@ -218,10 +203,10 @@ to end of file, links the input cluster to it then returns the
 cluster number
 If an error occurs, return CLUSTER_ERROR
 -----------------------------------------------------------------*/
-u32 _FAT_fat_linkFreeCluster(PARTITION* partition, u32 cluster) {
-	u32 firstFree;
-	u32 curLink;
-	u32 lastCluster;
+uint32_t _FAT_fat_linkFreeCluster(PARTITION* partition, uint32_t cluster) {
+	uint32_t firstFree;
+	uint32_t curLink;
+	uint32_t lastCluster;
 	bool loopedAroundFAT = false;
 
 	lastCluster =  partition->fat.lastCluster;
@@ -278,10 +263,10 @@ to end of file, links the input cluster to it, clears the new
 cluster to 0 valued bytes, then returns the cluster number
 If an error occurs, return CLUSTER_ERROR
 -----------------------------------------------------------------*/
-u32 _FAT_fat_linkFreeClusterCleared (PARTITION* partition, u32 cluster) {
-	u32 newCluster;
-	int i;
-	u8 emptySector[BYTES_PER_READ];
+uint32_t _FAT_fat_linkFreeClusterCleared (PARTITION* partition, uint32_t cluster) {
+	uint32_t newCluster;
+	uint32_t i;
+	uint8_t emptySector[BYTES_PER_READ];
 	
 	// Link the cluster
 	newCluster = _FAT_fat_linkFreeCluster(partition, cluster);
@@ -306,8 +291,8 @@ u32 _FAT_fat_linkFreeClusterCleared (PARTITION* partition, u32 cluster) {
 _FAT_fat_clearLinks
 frees any cluster used by a file
 -----------------------------------------------------------------*/
-bool _FAT_fat_clearLinks (PARTITION* partition, u32 cluster) {
-	u32 nextCluster;
+bool _FAT_fat_clearLinks (PARTITION* partition, uint32_t cluster) {
+	uint32_t nextCluster;
 	
 	if ((cluster < CLUSTER_FIRST) || (cluster > partition->fat.lastCluster /* This will catch CLUSTER_ERROR */))
 		return false;
@@ -332,10 +317,47 @@ bool _FAT_fat_clearLinks (PARTITION* partition, u32 cluster) {
 }
 
 /*-----------------------------------------------------------------
+_FAT_fat_trimChain
+Drop all clusters past the chainLength.
+If chainLength is 0, all clusters are dropped.
+If chainLength is 1, the first cluster is kept and the rest are 
+dropped, and so on.
+Return the last cluster left in the chain.
+-----------------------------------------------------------------*/
+uint32_t _FAT_fat_trimChain (PARTITION* partition, uint32_t startCluster, unsigned int chainLength) {
+	uint32_t nextCluster;
+	
+	if (chainLength == 0) {
+		// Drop the entire chain
+		_FAT_fat_clearLinks (partition, startCluster);
+		return CLUSTER_FREE;
+	} else {
+		// Find the last cluster in the chain, and the one after it
+		chainLength--;
+		nextCluster = _FAT_fat_nextCluster (partition, startCluster);
+		while ((chainLength > 0) && (nextCluster != CLUSTER_FREE) && (nextCluster != CLUSTER_EOF)) {
+			chainLength--;
+			startCluster = nextCluster;
+			nextCluster = _FAT_fat_nextCluster (partition, startCluster);
+		}
+	
+		// Drop all clusters after the last in the chain
+		if (nextCluster != CLUSTER_FREE && nextCluster != CLUSTER_EOF) {
+			_FAT_fat_clearLinks (partition, nextCluster);
+		}
+	
+		// Mark the last cluster in the chain as the end of the file
+		_FAT_fat_writeFatEntry (partition, startCluster, CLUSTER_EOF);
+	
+		return startCluster;
+	}
+}
+
+/*-----------------------------------------------------------------
 _FAT_fat_lastCluster
 Trace the cluster links until the last one is found
 -----------------------------------------------------------------*/
-u32 _FAT_fat_lastCluster (PARTITION* partition, u32 cluster) {
+uint32_t _FAT_fat_lastCluster (PARTITION* partition, uint32_t cluster) {
 	while ((_FAT_fat_nextCluster(partition, cluster) != CLUSTER_FREE) && (_FAT_fat_nextCluster(partition, cluster) != CLUSTER_EOF)) {
 		cluster = _FAT_fat_nextCluster(partition, cluster);
 	}
@@ -346,9 +368,9 @@ u32 _FAT_fat_lastCluster (PARTITION* partition, u32 cluster) {
 _FAT_fat_freeClusterCount
 Return the number of free clusters available
 -----------------------------------------------------------------*/
-u32 _FAT_fat_freeClusterCount (PARTITION* partition) {
-	u32 count = 0;
-	u32 curCluster;
+unsigned int _FAT_fat_freeClusterCount (PARTITION* partition) {
+	unsigned int count = 0;
+	uint32_t curCluster;
 	
 	for (curCluster = CLUSTER_FIRST; curCluster <= partition->fat.lastCluster; curCluster++) {
 		if (_FAT_fat_nextCluster(partition, curCluster) == CLUSTER_FREE) {

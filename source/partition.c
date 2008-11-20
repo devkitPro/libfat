@@ -25,15 +25,6 @@
  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
  EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-	2006-07-11 - Chishm
-		* Original release
-
-	2006-08-10 - Chishm
-		* Fixed problem when openning files starting with "fat"
-		
-	2006-10-28 - Chishm
-		* _partitions changed to _FAT_partitions to maintain the same style of naming as the functions
 */
 
 
@@ -41,11 +32,12 @@
 #include "bit_ops.h"
 #include "file_allocation_table.h"
 #include "directory.h"
+#include "mem_allocate.h"
+#include "fatfile.h"
 
 #include <string.h>
 #include <ctype.h>
-
-#include "mem_allocate.h"
+#include <sys/iosupport.h>
 
 /* 
 This device name, as known by devkitPro toolchains
@@ -102,25 +94,13 @@ enum BPB {
 	BPB_bootSig_AA = 0x1FF
 };
 
-#if defined(__wii__)
-#define MAXIMUM_PARTITIONS 5
-#elif defined(__gamecube__)
-#define MAXIMUM_PARTITIONS 4
-#elif defined(NDS)
-#define MAXIMUM_PARTITIONS 4
-#else // not defined NDS
-#define MAXIMUM_PARTITIONS 1
-#endif // defined NDS
-PARTITION* _FAT_partitions[MAXIMUM_PARTITIONS] = {NULL};
-
-// Use a single static buffer for the partitions
+static const char FAT_SIG[3] = {'F', 'A', 'T'};
 
 
-static PARTITION* _FAT_partition_constructor ( const IO_INTERFACE* disc, u32 cacheSize) {
+PARTITION* _FAT_partition_constructor (const DISC_INTERFACE* disc, uint32_t cacheSize, sec_t startSector) {
 	PARTITION* partition;
 	int i;
-	u32 bootSector;
-	u8 sectorBuffer[BYTES_PER_READ] = {0};
+	uint8_t sectorBuffer[BYTES_PER_READ] = {0};
 
 	// Read first sector of disc
 	if ( !_FAT_disc_readSectors (disc, 0, 1, sectorBuffer)) {
@@ -132,12 +112,14 @@ static PARTITION* _FAT_partition_constructor ( const IO_INTERFACE* disc, u32 cac
 		return NULL;
 	}
 
-	// Check if there is a FAT string, which indicates this is a boot sector
-	if ((sectorBuffer[0x36] == 'F') && (sectorBuffer[0x37] == 'A') && (sectorBuffer[0x38] == 'T')) {
-		bootSector = 0;
-	} else if ((sectorBuffer[0x52] == 'F') && (sectorBuffer[0x53] == 'A') && (sectorBuffer[0x54] == 'T')) {
+	if (startSector != 0) {
+		// We're told where to start the partition, so just accept it
+	} else if (!memcmp(sectorBuffer + BPB_FAT16_fileSysType, FAT_SIG, sizeof(FAT_SIG))) {
+		// Check if there is a FAT string, which indicates this is a boot sector
+		startSector = 0;
+	} else if (!memcmp(sectorBuffer + BPB_FAT32_fileSysType, FAT_SIG, sizeof(FAT_SIG))) {
 		// Check for FAT32
-		bootSector = 0;
+		startSector = 0;
 	} else {
 		// This is an MBR
 		// Find first valid partition from MBR
@@ -151,14 +133,21 @@ static PARTITION* _FAT_partition_constructor ( const IO_INTERFACE* disc, u32 cac
 		// Go to first valid partition
 		if ( i != 0x1FE) {
 			// Make sure it found a partition
-			bootSector = u8array_to_u32(sectorBuffer, 0x8 + i);
+			startSector = u8array_to_u32(sectorBuffer, 0x8 + i);
 		} else {
-			bootSector = 0;	// No partition found, assume this is a MBR free disk
+			startSector = 0;	// No partition found, assume this is a MBR free disk
 		}
 	}
 
+	// Now verify that this is indeed a FAT partition
+	if (memcmp(sectorBuffer + BPB_FAT16_fileSysType, FAT_SIG, sizeof(FAT_SIG)) && 
+		memcmp(sectorBuffer + BPB_FAT32_fileSysType, FAT_SIG, sizeof(FAT_SIG)))
+	{
+		return NULL;
+	}
+
 	// Read in boot sector
-	if ( !_FAT_disc_readSectors (disc, bootSector, 1, sectorBuffer)) {
+	if ( !_FAT_disc_readSectors (disc, startSector, 1, sectorBuffer)) {
 		return NULL;
 	}
 
@@ -167,6 +156,9 @@ static PARTITION* _FAT_partition_constructor ( const IO_INTERFACE* disc, u32 cac
 		return NULL;
 	}
 
+	// Init the partition lock
+	_FAT_lock_init(&partition->lock);
+	
 	// Set partition's disc interface
 	partition->disc = disc;
 
@@ -184,15 +176,16 @@ static PARTITION* _FAT_partition_constructor ( const IO_INTERFACE* disc, u32 cac
 	partition->bytesPerSector = BYTES_PER_READ;	// Sector size is redefined to be 512 bytes
 	partition->sectorsPerCluster = sectorBuffer[BPB_sectorsPerCluster] * u8array_to_u16(sectorBuffer, BPB_bytesPerSector) / BYTES_PER_READ;
 	partition->bytesPerCluster = partition->bytesPerSector * partition->sectorsPerCluster;
-	partition->fat.fatStart = bootSector + u8array_to_u16(sectorBuffer, BPB_reservedSectors); 
+	partition->fat.fatStart = startSector + u8array_to_u16(sectorBuffer, BPB_reservedSectors); 
 
 	partition->rootDirStart = partition->fat.fatStart + (sectorBuffer[BPB_numFATs] * partition->fat.sectorsPerFat);
-	partition->dataStart = partition->rootDirStart + (( u8array_to_u16(sectorBuffer, BPB_rootEntries) * DIR_ENTRY_DATA_SIZE) / partition->bytesPerSector);
+	partition->dataStart = partition->rootDirStart + 
+		(( u8array_to_u16(sectorBuffer, BPB_rootEntries) * DIR_ENTRY_DATA_SIZE) / partition->bytesPerSector);
 
-	partition->totalSize = (partition->numberOfSectors - partition->dataStart) * partition->bytesPerSector;
+	partition->totalSize = ((uint64_t)partition->numberOfSectors - (partition->dataStart - startSector)) * (uint64_t)partition->bytesPerSector;
 
 	// Store info about FAT
-	partition->fat.lastCluster = (partition->numberOfSectors - partition->dataStart) / partition->sectorsPerCluster;
+	partition->fat.lastCluster = (partition->numberOfSectors - (uint32_t)(partition->dataStart - startSector)) / partition->sectorsPerCluster;
 	partition->fat.firstFree = CLUSTER_FIRST;
 
 	if (partition->fat.lastCluster < CLUSTERS_PER_FAT12) {
@@ -230,195 +223,38 @@ static PARTITION* _FAT_partition_constructor ( const IO_INTERFACE* disc, u32 cac
 	return partition;
 }
 
-static void _FAT_partition_destructor (PARTITION* partition) {
+void _FAT_partition_destructor (PARTITION* partition) {
+	FILE_STRUCT* nextFile;
+	
+	_FAT_lock(&partition->lock);
+
+	// Synchronize open files
+	nextFile = partition->firstOpenFile;
+	while (nextFile) {
+		_FAT_syncToDisc (nextFile);
+		nextFile = nextFile->nextOpenFile;
+	}
+	
+	// Free memory used by the cache, writing it to disc at the same time
 	_FAT_cache_destructor (partition->cache);
-	_FAT_disc_shutdown (partition->disc);
+
+	// Unlock the partition and destroy the lock
+	_FAT_unlock(&partition->lock);
+	_FAT_lock_deinit(&partition->lock);
+	
+	// Free memory used by the partition
 	_FAT_mem_free (partition);
 }
 
-bool _FAT_partition_mount (PARTITION_INTERFACE partitionNumber, u32 cacheSize) {
-	int i;
-	const IO_INTERFACE* disc = NULL;
-	
-	if (_FAT_partitions[partitionNumber] != NULL) {
-		return false;
-	}	
-
-	disc = _FAT_disc_findInterfaceSlot (partitionNumber);
-	if (disc == NULL) {
-		return false;
-	}
-	
-	// See if that disc is already in use, if so, then just copy the partition pointer
-	for (i = 0; i < MAXIMUM_PARTITIONS; i++) {
-		if ((_FAT_partitions[i] != NULL) && (_FAT_partitions[i]->disc == disc)) {
-			_FAT_partitions[partitionNumber] = _FAT_partitions[i];
-			return true;
-		}
-	}
-
-	_FAT_partitions[partitionNumber] = _FAT_partition_constructor (disc, cacheSize);
-
-	if (_FAT_partitions[partitionNumber] == NULL) {
-		return false;
-	}
-
-	return true;
-}
-
-bool _FAT_partition_mountCustomInterface (const IO_INTERFACE* device, u32 cacheSize) {
-	
-
-#ifdef GBA
-	if (_FAT_partitions[0] != NULL)	return false;
-
-	if (device == NULL) return false;
-
-	// Only ever one partition on GBA
-	_FAT_partitions[0] = _FAT_partition_constructor (device, cacheSize);
-#else
-	int i;
-	
-	if (_FAT_partitions[PI_CUSTOM] != NULL) return false;
-
-	if (device == NULL) return false;
-
-	// See if that disc is already in use, if so, then just copy the partition pointer
-	for (i = 0; i < MAXIMUM_PARTITIONS; i++) {
-		if ((_FAT_partitions[i] != NULL) && (_FAT_partitions[i]->disc == device)) {
-			_FAT_partitions[PI_CUSTOM] = _FAT_partitions[i];
-			return true;
-		}
-	}
-
-	_FAT_partitions[PI_CUSTOM] = _FAT_partition_constructor (device, cacheSize);
-
-	if (_FAT_partitions[PI_CUSTOM] == NULL) {
-		return false;
-	}
-#endif
-	return true;
-}
-
-bool _FAT_partition_setDefaultInterface (PARTITION_INTERFACE partitionNumber) {
-#ifndef GBA	// Can only set the default partition when there is more than 1, so doesn't apply to GBA
-	if ((partitionNumber < 1) || (partitionNumber >= MAXIMUM_PARTITIONS)) {
-		return false;
-	}
-	
-	if (_FAT_partitions[partitionNumber] == NULL) {
-		return false;
-	}
-	
-	_FAT_partitions[PI_DEFAULT] = _FAT_partitions[partitionNumber];
-#endif	
-	return true;
-}
-
-bool _FAT_partition_setDefaultPartition (PARTITION* partition) {
-#ifndef GBA	// Can only set the default partition when there is more than 1, so doesn't apply to GBA
-	int i;
-	
-	if (partition == NULL) {
-		return false;
-	}
-	
-	// Ensure that this device is already in the list
-	for (i = 1; i < MAXIMUM_PARTITIONS; i++) {
-		if (_FAT_partitions[i] == partition) {
-			break;
-		}
-	}
-	
-	// It wasn't in the list, so fail
-	if (i == MAXIMUM_PARTITIONS) {
-		return false;
-	}	
-	
-	// Change the default partition / device to this one
-	_FAT_partitions[PI_DEFAULT] = partition;
-	
-#endif
-	return true;
-}
-
-bool _FAT_partition_unmount (PARTITION_INTERFACE partitionNumber) {
-	int i;
-	PARTITION* partition = _FAT_partitions[partitionNumber];
-	
-	if (partition == NULL) {
-		return false;
-	}
-	
-	if (partition->openFileCount > 0) {
-		// There are still open files that need closing
-		return false;
-	}
-	
-	// Remove all references to this partition
-	for (i = 0; i < MAXIMUM_PARTITIONS; i++) {
-		if (_FAT_partitions[i] == partition) {
-			_FAT_partitions[i] = NULL;
-		}
-	}
-	
-	_FAT_partition_destructor (partition);
-	return true;
-}
-
-bool _FAT_partition_unsafeUnmount (PARTITION_INTERFACE partitionNumber) {
-	int i;
-	PARTITION* partition = _FAT_partitions[partitionNumber];
-	
-	if (partition == NULL) {
-		return false;
-	}
-	
-	// Remove all references to this partition
-	for (i = 0; i < MAXIMUM_PARTITIONS; i++) {
-		if (_FAT_partitions[i] == partition) {
-			_FAT_partitions[i] = NULL;
-		}
-	}
-	
-	_FAT_cache_invalidate (partition->cache);
-	_FAT_partition_destructor (partition);
-	return true;
-}
 
 PARTITION* _FAT_partition_getPartitionFromPath (const char* path) {
-
-#ifdef GBA
- 	return _FAT_partitions[0];
-#else
-	int namelen;
-	int partitionNumber;
+	const devoptab_t *devops;
 	
-	// Device name extraction code taken from DevKitPro
-	namelen = strlen(DEVICE_NAME);
-	if (strchr (path, ':') == NULL) {
-		// No device specified
-		partitionNumber = PI_DEFAULT;
-	} else if( strncmp(DEVICE_NAME, path, namelen) == 0 ) {
-		if ( path[namelen] == ':' ) {
-			// Only the device name is specified
-			partitionNumber = PI_DEFAULT;
-		} else if (isdigit(path[namelen]) && path[namelen+1] ==':' ) {
-			// Device name and number specified
-			partitionNumber = path[namelen] - '0';
-		} else {
-			// Incorrect device name
-			return NULL;
-		}
-	} else {
-		// Incorrect device name
+	devops = GetDeviceOpTab (path);
+	
+	if (!devops) {
 		return NULL;
 	}
 	
-	if ((partitionNumber < 0) || (partitionNumber >= MAXIMUM_PARTITIONS)) {
-		return NULL;
-	}
-	
-	return _FAT_partitions[partitionNumber];
-#endif
+	return (PARTITION*)devops->deviceData;
 }

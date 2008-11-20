@@ -24,7 +24,6 @@
  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
  EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
 */
 
 
@@ -35,11 +34,8 @@
 extern "C" {
 #endif
 
-#include "gba_types.h"
-
-typedef enum {PI_CART_SLOT} PARTITION_INTERFACE;
-
-struct IO_INTERFACE_STRUCT ;
+#include <stdint.h>
+#include "disc_io.h"
 
 /*
 Initialise any inserted block-devices.
@@ -47,45 +43,36 @@ Add the fat device driver to the devoptab, making it available for standard file
 cacheSize: The number of pages to allocate for each inserted block-device
 setAsDefaultDevice: if true, make this the default device driver for file operations
 */
-bool fatInit (u32 cacheSize, bool setAsDefaultDevice);
+extern bool fatInit (uint32_t cacheSize, bool setAsDefaultDevice);
 
 /*
 Calls fatInit with setAsDefaultDevice = true and cacheSize optimised for the host system.
 */
-bool fatInitDefault (void);
+extern bool fatInitDefault (void);
 
 /*
-Mount the device specified by partitionNumber
-PD_DEFAULT is not allowed, use _FAT_partition_setDefaultDevice
-PD_CUSTOM is not allowed, use _FAT_partition_mountCustomDevice
+Mount the device pointed to by interface, and set up a devoptab entry for it as "name:".
+You can then access the filesystem using "name:/".
+This will mount the active partition or the first valid partition on the disc, 
+and will use a cache size optimized for the host system.
 */
-bool fatMountNormalInterface (PARTITION_INTERFACE partitionNumber, u32 cacheSize);
+extern bool fatMountSimple (const char* name, const DISC_INTERFACE* interface);
 
 /*
-Mount a partition on a custom device
+Mount the device pointed to by interface, and set up a devoptab entry for it as "name:".
+You can then access the filesystem using "name:/".
+If startSector = 0, it will mount the active partition of the first valid partition on
+the disc. Otherwise it will try to mount the partition starting at startSector.
+cacheSize specifies the number of pages to allocate for the cache.
+This will not startup the disc, so you need to call interface->startup(); first.
 */
-bool fatMountCustomInterface (struct IO_INTERFACE_STRUCT* device, u32 cacheSize);
+extern bool fatMount (const char* name, const DISC_INTERFACE* interface, sec_t startSector, uint32_t cacheSize);
 
 /*
-Unmount the partition specified by partitionNumber
-If there are open files, it will fail
+Unmount the partition specified by name.
+If there are open files, it will attempt to synchronise them to disc.
 */
-bool fatUnmount (PARTITION_INTERFACE partitionNumber);
-
-
-/*
-Forcibly unmount the partition specified by partitionNumber
-Any open files on the partition will become invalid
-The cache will be invalidated, and any unflushed writes will be lost
-*/
-bool fatUnsafeUnmount (PARTITION_INTERFACE partitionNumber);
-
-/*
-Set the default device for access by fat: and fat0:
-PD_DEFAULT is unallowed. 
-Doesn't do anything useful on GBA, since there is only one device
-*/
-bool fatSetDefaultInterface (PARTITION_INTERFACE partitionNumber);
+extern void fatUnmount (const char* name);
 
 #ifdef __cplusplus
 }

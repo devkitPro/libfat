@@ -31,13 +31,10 @@
  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
  EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-	2007-11-14 - Chishm
-		* Fixed _FAT_cache_constructor to return NULL on error, not false
-		* Fixed _FAT_cache_flush to return false on error. With thanks to xorloser
 */
 
 #include <string.h>
+#include <limits.h>
 
 #include "common.h"
 #include "cache.h"
@@ -46,11 +43,11 @@
 #include "mem_allocate.h"
 #include "bit_ops.h"
 
-#define CACHE_FREE 0xFFFFFFFF
+#define CACHE_FREE UINT_MAX
 
-CACHE* _FAT_cache_constructor (u32 numberOfPages, const IO_INTERFACE* discInterface) {
+CACHE* _FAT_cache_constructor (unsigned int numberOfPages, const DISC_INTERFACE* discInterface) {
 	CACHE* cache;
-	u32 i;
+	unsigned int i;
 	CACHE_ENTRY* cacheEntries;
 
 	if (numberOfPages < 2) {
@@ -80,7 +77,7 @@ CACHE* _FAT_cache_constructor (u32 numberOfPages, const IO_INTERFACE* discInterf
 
 	cache->cacheEntries = cacheEntries;
 
-	cache->pages = (u8*) _FAT_mem_allocate ( CACHE_PAGE_SIZE * numberOfPages);
+	cache->pages = (uint8_t*) _FAT_mem_allocate ( CACHE_PAGE_SIZE * numberOfPages);
 	if (cache->pages == NULL) {
 		_FAT_mem_free (cache->cacheEntries);
 		_FAT_mem_free (cache);
@@ -107,13 +104,13 @@ Retrieve a sector's page from the cache. If it is not found in the cache,
 load it into the cache and return the page it was loaded to.
 Return CACHE_FREE on error.
 */
-static u32 _FAT_cache_getSector (CACHE* cache, u32 sector) {
-	u32 i;
+static unsigned int _FAT_cache_getSector (CACHE* cache, sec_t sector) {
+	unsigned int i;
 	CACHE_ENTRY* cacheEntries = cache->cacheEntries;
-	u32 numberOfPages = cache->numberOfPages;
+	unsigned int numberOfPages = cache->numberOfPages;
 
-	u32 leastUsed = 0;
-	u32 lowestCount = 0xFFFFFFFF;
+	unsigned int leastUsed = 0;
+	unsigned int lowestCount = UINT_MAX;
 
 	for (i = 0; (i < numberOfPages) && (cacheEntries[i].sector != sector); i++) {
 		// While searching for the desired sector, also search for the leased used page
@@ -153,8 +150,8 @@ static u32 _FAT_cache_getSector (CACHE* cache, u32 sector) {
 /*
 Reads some data from a cache page, determined by the sector number
 */
-bool _FAT_cache_readPartialSector (CACHE* cache, void* buffer, u32 sector, u32 offset, u32 size) {
-	u32 page;
+bool _FAT_cache_readPartialSector (CACHE* cache, void* buffer, sec_t sector, unsigned int offset, size_t size) {
+	unsigned int page;
 
 	if (offset + size > BYTES_PER_READ) {
 		return false;
@@ -168,8 +165,8 @@ bool _FAT_cache_readPartialSector (CACHE* cache, void* buffer, u32 sector, u32 o
 	return true;
 }
 
-bool _FAT_cache_readLittleEndianValue (CACHE* cache, u32 *value, u32 sector, u32 offset, u32 num_bytes) {
-  u8 buf[4];
+bool _FAT_cache_readLittleEndianValue (CACHE* cache, uint32_t *value, sec_t sector, unsigned int offset, int num_bytes) {
+  uint8_t buf[4];
   if (!_FAT_cache_readPartialSector(cache, buf, sector, offset, num_bytes)) return false;
   
   switch(num_bytes) {
@@ -184,8 +181,8 @@ bool _FAT_cache_readLittleEndianValue (CACHE* cache, u32 *value, u32 sector, u32
 /* 
 Writes some data to a cache page, making sure it is loaded into memory first.
 */
-bool _FAT_cache_writePartialSector (CACHE* cache, const void* buffer, u32 sector, u32 offset, u32 size) {
-	u32 page;
+bool _FAT_cache_writePartialSector (CACHE* cache, const void* buffer, sec_t sector, unsigned int offset, size_t size) {
+	unsigned int page;
 
 	if (offset + size > BYTES_PER_READ) {
 		return false;
@@ -202,8 +199,8 @@ bool _FAT_cache_writePartialSector (CACHE* cache, const void* buffer, u32 sector
 	return true;
 }
 
-bool _FAT_cache_writeLittleEndianValue (CACHE* cache, const u32 value, u32 sector, u32 offset, u32 size) {
-  u8 buf[4] = {0, 0, 0, 0};
+bool _FAT_cache_writeLittleEndianValue (CACHE* cache, const uint32_t value, sec_t sector, unsigned int offset, int size) {
+  uint8_t buf[4] = {0, 0, 0, 0};
 
   switch(size) {
   case 1: buf[0] = value; break;
@@ -218,8 +215,8 @@ bool _FAT_cache_writeLittleEndianValue (CACHE* cache, const u32 value, u32 secto
 /* 
 Writes some data to a cache page, zeroing out the page first
 */
-bool _FAT_cache_eraseWritePartialSector (CACHE* cache, const void* buffer, u32 sector, u32 offset, u32 size) {
-	u32 page;
+bool _FAT_cache_eraseWritePartialSector (CACHE* cache, const void* buffer, sec_t sector, unsigned int offset, size_t size) {
+	unsigned int page;
 
 	if (offset + size > BYTES_PER_READ) {
 		return false;
@@ -243,7 +240,7 @@ Flushes all dirty pages to disc, clearing the dirty flag.
 Also resets all pages' page count to 0.
 */
 bool _FAT_cache_flush (CACHE* cache) {
-	u32 i;
+	unsigned int i;
 
 	for (i = 0; i < cache->numberOfPages; i++) {
 		if (cache->cacheEntries[i].dirty) {
@@ -259,7 +256,7 @@ bool _FAT_cache_flush (CACHE* cache) {
 }
 
 void _FAT_cache_invalidate (CACHE* cache) {
-	int i;
+	unsigned int i;
 	for (i = 0; i < cache->numberOfPages; i++) {
 		cache->cacheEntries[i].sector = CACHE_FREE;
 		cache->cacheEntries[i].count = 0;

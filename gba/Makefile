@@ -17,7 +17,7 @@ include $(DEVKITARM)/gba_rules
 # all directories are relative to this makefile
 #---------------------------------------------------------------------------------
 BUILD		?=	release
-SOURCES		:=	../source ../source/disc_io
+SOURCES		:=	../source
 INCLUDES	:=	../include
 DATA		:=
 LIB			:=	$(TOPDIR)/gba/lib

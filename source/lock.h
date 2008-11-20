@@ -31,55 +31,56 @@
 
 #include "common.h"
 
-#if defined(__wii__) || defined(__gamecube__)
+#ifdef USE_LWP_LOCK
 
-#include <gccore.h>
-
-extern mutex_t _FAT_mutex;
-
-static inline void _FAT_lock_init()
+static inline void _FAT_lock_init(mutex_t *mutex)
 {
-	LWP_MutexInit(&_FAT_mutex, false);
+	LWP_MutexInit(mutex, false);
 }
 
-static inline void _FAT_lock_deinit()
+static inline void _FAT_lock_deinit(mutex_t *mutex)
 {
-	LWP_MutexDestroy(_FAT_mutex);
+	LWP_MutexDestroy(*mutex);
 }
 
-static inline void _FAT_lock()
+static inline void _FAT_lock(mutex_t *mutex)
 {
-	LWP_MutexLock(_FAT_mutex);
+	LWP_MutexLock(*mutex);
 }
 
-static inline void _FAT_unlock()
+static inline void _FAT_unlock(mutex_t *mutex)
 {
-	LWP_MutexUnlock(_FAT_mutex);
+	LWP_MutexUnlock(*mutex);
 }
 
 #else
 
-static inline void _FAT_lock_init()
+// We still need a blank lock type
+#ifndef mutex_t
+typedef int mutex_t;
+#endif
+
+static inline void _FAT_lock_init(mutex_t *mutex)
 {
 	return;
 }
 
-static inline void _FAT_lock_deinit()
+static inline void _FAT_lock_deinit(mutex_t *mutex)
 {
 	return;
 }
 
-static inline void _FAT_lock()
+static inline void _FAT_lock(mutex_t *mutex)
 {
 	return;
 }
 
-static inline void _FAT_unlock()
+static inline void _FAT_unlock(mutex_t *mutex)
 {
 	return;
 }
 
-#endif /* __wii__ || __gamecube__ */
+#endif // USE_LWP_LOCK
 
 
 #endif // _CACHE_H

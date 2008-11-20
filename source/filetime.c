@@ -24,27 +24,12 @@
  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
  EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-	2006-07-11 - Chishm
-		* Original release
-		
-	2006-09-30 - Chishm
-		* Validity checks performed on the time supplied by the IPC
-		* Cleaned up magic numbers
-		
-	2006-10-01 - Chishm
-		* Fixed incorrect use of bitwise-or instead of logical-or
-		
-	2007-10-30 - Chishm
-		* Uses standard POSIX time functions
-		
-	2007-11-04 - Chishm
-		* Fix off-by-one error for months value
 */
 
 
 #include <time.h>
 #include "filetime.h"
+#include "common.h"
 
 #define MAX_HOUR 23
 #define MAX_MINUTE 59
@@ -55,8 +40,8 @@
 #define MAX_DAY 31
 #define MIN_DAY 1
 
-u16 _FAT_filetime_getTimeFromRTC (void) {
-#ifndef GBA
+uint16_t _FAT_filetime_getTimeFromRTC (void) {
+#ifdef USE_RTC_TIME
 	struct tm timeParts;
 	time_t epochTime;
 	
@@ -82,8 +67,8 @@ u16 _FAT_filetime_getTimeFromRTC (void) {
 }
 
 
-u16 _FAT_filetime_getDateFromRTC (void) {
-#ifndef GBA
+uint16_t _FAT_filetime_getDateFromRTC (void) {
+#ifdef USE_RTC_TIME
 	struct tm timeParts;
 	time_t epochTime;
 	
@@ -105,7 +90,7 @@ u16 _FAT_filetime_getDateFromRTC (void) {
 #endif
 }
 
-time_t _FAT_filetime_to_time_t (u16 t, u16 d) {
+time_t _FAT_filetime_to_time_t (uint16_t t, uint16_t d) {
 	struct tm timeParts;
 
 	timeParts.tm_hour = t >> 11;

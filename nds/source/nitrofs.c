@@ -17,8 +17,8 @@ int nitroFSDirNext(struct _reent *r, DIR_ITER *dirState, char *filename, struct 
 int nitroFSDirClose(struct _reent *r, DIR_ITER *dirState);
 int nitroFSOpen(struct _reent *r, void *fileStruct, const char *path,int flags,int mode);
 int nitroFSClose(struct _reent *r,int fd);
-int nitroFSRead(struct _reent *r,int fd,char *ptr,int len);
-int nitroFSSeek(struct _reent *r,int fd,int pos,int dir);
+ssize_t nitroFSRead(struct _reent *r,int fd,char *ptr,size_t len);
+off_t nitroFSSeek(struct _reent *r,int fd,off_t pos,int dir);
 int nitroFSFstat(struct _reent *r,int fd,struct stat *st);
 
 #define LOADERSTR	"PASS"	//look for this
@@ -81,9 +81,9 @@ devoptab_t nitroFSdevoptab={
 	sizeof(struct nitroFSStruct),	//	int	structSize;
 	&nitroFSOpen,	//	int (*open_r)(struct _reent *r, void *fileStruct, const char *path,int flags,int mode);
 	&nitroFSClose,	//	int (*close_r)(struct _reent *r,int fd);
-	NULL,	//	int (*write_r)(struct _reent *r,int fd,const char *ptr,int len);
-	&nitroFSRead,	//	int (*read_r)(struct _reent *r,int fd,char *ptr,int len);
-	&nitroFSSeek,	//	int (*seek_r)(struct _reent *r,int fd,int pos,int dir);
+	NULL,	//	ssize_t (*write_r)(struct _reent *r,int fd,const char *ptr,size_t len);
+	&nitroFSRead,	//	ssize_t (*read_r)(struct _reent *r,int fd,char *ptr,size_t len);
+	&nitroFSSeek,	//	off_t (*seek_r)(struct _reent *r,int fd,off_t pos,int dir);
 	&nitroFSFstat,	//	int (*fstat_r)(struct _reent *r,int fd,struct stat *st);
 	NULL,	//	int (*stat_r)(struct _reent *r,const char *file,struct stat *st);
 	NULL,	//	int (*link_r)(struct _reent *r,const char *existing, const char  *newLink);
@@ -97,8 +97,11 @@ devoptab_t nitroFSdevoptab={
 	&nitroFSDirOpen,	//	DIR_ITER* (*diropen_r)(struct _reent *r, DIR_ITER *dirState, const char *path);
 	&nitroDirReset,	//	int (*dirreset_r)(struct _reent *r, DIR_ITER *dirState);
 	&nitroFSDirNext,	//	int (*dirnext_r)(struct _reent *r, DIR_ITER *dirState, char *filename, struct stat *filestat);
-	&nitroFSDirClose	//	int (*dirclose_r)(struct _reent *r, DIR_ITER *dirState);
-	
+	&nitroFSDirClose,	//	int (*dirclose_r)(struct _reent *r, DIR_ITER *dirState);
+	NULL,	//	int (*statvfs_r)(struct _reent *r, const char *path, struct statvfs *buf);
+	NULL,	//	int (*ftruncate_r)(struct _reent *r, int fd, off_t len);
+	NULL,	// 	int (*fsync_r)(struct _reent *r, int fd);
+	NULL,	//	void *deviceData;
 };
 
 //inline these mebbe? these 4 'sub' functions deal with actually reading from either gba rom or .nds file :)
@@ -340,7 +343,7 @@ int nitroFSClose(struct _reent *r,int fd) {
 	return(nitroSubClose(&((struct nitroFSStruct *)fd)->nrs));	
 }
 
-int nitroFSRead(struct _reent *r,int fd,char *ptr,int len) {
+ssize_t nitroFSRead(struct _reent *r,int fd,char *ptr,size_t len) {
 	struct nitroFSStruct *fatStruct=(struct nitroFSStruct *)fd;
 	struct nitroRawStruct *nrs=&((struct nitroFSStruct *)fd)->nrs;
 	if(nrs->pos+len > fatStruct->end) 
@@ -350,7 +353,7 @@ int nitroFSRead(struct _reent *r,int fd,char *ptr,int len) {
 	return(nitroSubRead(nrs,ptr,len));
 }
 
-int nitroFSSeek(struct _reent *r,int fd,int pos,int dir) {
+off_t nitroFSSeek(struct _reent *r,int fd ,off_t pos,int dir) {
 	//need check for eof here...
 	struct nitroFSStruct *fatStruct=(struct nitroFSStruct *)fd;
 	struct nitroRawStruct *nrs=&((struct nitroFSStruct *)fd)->nrs;

@@ -24,12 +24,6 @@
  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
  EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-	2006-07-11 - Chishm
-		* Original release
-		
-	2007-10-30 - Chishm
-		* Uses standard POSIX time functions
 */
 
 #ifndef _FILETIME_H
@@ -38,10 +32,10 @@
 #include "common.h"
 #include <sys/types.h>
 
-u16 _FAT_filetime_getTimeFromRTC (void);
-u16 _FAT_filetime_getDateFromRTC (void);
+uint16_t _FAT_filetime_getTimeFromRTC (void);
+uint16_t _FAT_filetime_getDateFromRTC (void);
 
-time_t _FAT_filetime_to_time_t (u16 t, u16 d);
+time_t _FAT_filetime_to_time_t (uint16_t t, uint16_t d);
 
 
 #endif // _FILETIME_H

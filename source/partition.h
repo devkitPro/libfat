@@ -25,9 +25,6 @@
  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
  EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-	2006-07-11 - Chishm
-		* Original release
 */
 
 #ifndef _PARTITION_H
@@ -35,6 +32,7 @@
 
 #include "common.h"
 #include "cache.h"
+#include "lock.h"
 
 // Device name
 extern const char* DEVICE_NAME;
@@ -42,75 +40,48 @@ extern const char* DEVICE_NAME;
 // Filesystem type
 typedef enum {FS_UNKNOWN, FS_FAT12, FS_FAT16, FS_FAT32} FS_TYPE;
 
-
 typedef struct {
-	u32 fatStart;
-	u32 sectorsPerFat;
-	u32 lastCluster;
-	u32 firstFree;
+	sec_t    fatStart;
+	uint32_t sectorsPerFat;
+	uint32_t lastCluster;
+	uint32_t firstFree;
 } FAT;
 
 typedef struct {
-	const IO_INTERFACE* disc;
-	CACHE* cache;
+	const DISC_INTERFACE* disc;
+	CACHE*                cache;
 	// Info about the partition
-	bool readOnly;		// If this is set, then do not try writing to the disc
-	FS_TYPE filesysType;
-	u32 totalSize;
-	u32 rootDirStart;
-	u32 rootDirCluster;
-	u32 numberOfSectors;
-	u32 dataStart;
-	u32 bytesPerSector;
-	u32 sectorsPerCluster;
-	u32 bytesPerCluster;
-	FAT fat;
+	bool                  readOnly;				// If this is set, then do not try writing to the disc
+	FS_TYPE               filesysType;
+	uint64_t              totalSize;
+	sec_t                 rootDirStart;
+	uint32_t              rootDirCluster;
+	uint32_t              numberOfSectors;
+	sec_t                 dataStart;
+	uint32_t              bytesPerSector;
+	uint32_t              sectorsPerCluster;
+	uint32_t              bytesPerCluster;
+	FAT                   fat;
 	// Values that may change after construction
-	u32 cwdCluster;			// Current working directory cluser
-	u32 openFileCount;
+	uint32_t              cwdCluster;			// Current working directory cluster
+	int                   openFileCount;
+	struct _FILE_STRUCT*  firstOpenFile;		// The start of a linked list of files
+	mutex_t               lock;					// A lock for partition operations
 } PARTITION;
 
 /*
-Mount the device specified by partitionDevice
-PD_DEFAULT is not allowed, use _FAT_partition_setDefaultDevice
-PD_CUSTOM is not allowed, use _FAT_partition_mountCustomDevice
+Mount the supplied device and return a pointer to the struct necessary to use it
 */
-bool _FAT_partition_mount (PARTITION_INTERFACE partitionNumber, u32 cacheSize);
+PARTITION* _FAT_partition_constructor (const DISC_INTERFACE* disc, uint32_t cacheSize, sec_t startSector);
 
 /*
-Mount a partition on a custom device
+Dismount the device and free all structures used. 
+Will also attempt to synchronise all open files to disc.
 */
-bool _FAT_partition_mountCustomInterface (const IO_INTERFACE* device, u32 cacheSize);
+void _FAT_partition_destructor (PARTITION* partition);
 
 /*
-Unmount the partition specified by partitionNumber
-If there are open files, it will fail
-*/
-bool _FAT_partition_unmount (PARTITION_INTERFACE partitionNumber);
-
-/*
-Forcibly unmount the partition specified by partitionNumber
-Any open files on the partition will become invalid
-The cache will be invalidated, and any unflushed writes will be lost
-*/
-bool _FAT_partition_unsafeUnmount (PARTITION_INTERFACE partitionNumber);
-
-/*
-Set the default device for access by fat: and fat0:,
-based on the device number
-*/
-bool _FAT_partition_setDefaultInterface (PARTITION_INTERFACE partitionNumber);
-
-/*
-Set the default device for access by fat: and fat0:, 
-based on the partition pointer
-*/
-bool _FAT_partition_setDefaultPartition (PARTITION* partition);
-
-/*
-Return the partition specified in a path
-For instance, "fat0:", "fat:", "/" and "fat:/" will all
-return the default partition
+Return the partition specified in a path, as taken from the devoptab.
 */
 PARTITION* _FAT_partition_getPartitionFromPath (const char* path);
 

@@ -26,19 +26,6 @@
  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
  EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-	2006-08-13 - Chishm
-		* Moved all externally visible directory related functions to fatdir
-		* Added _FAT_mkdir_r
-		
-	2006-08-14 - Chishm
-		* Added directory iterator functions
-		
-	2007-01-10 - Chishm
-		* Updated directory iterator functions for DevkitPro r20
-
-	2007-10-25 - Chishm
-		* Added statvfs functionality
 */
 
 
@@ -54,10 +41,10 @@
 
 typedef struct {
 	PARTITION* partition;
-	DIR_ENTRY currentEntry;
-	u32 startCluster;
-	bool inUse;
-	bool validEntry;
+	DIR_ENTRY  currentEntry;
+	uint32_t   startCluster;
+	bool       inUse;
+	bool       validEntry;
 } DIR_STATE_STRUCT;
 
 extern int _FAT_stat_r (struct _reent *r, const char *path, struct stat *st);

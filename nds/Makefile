@@ -16,7 +16,7 @@ include $(DEVKITARM)/ds_rules
 # all directories are relative to this makefile
 #---------------------------------------------------------------------------------
 BUILD		?=	release
-SOURCES		:=	../source ../source/disc_io source
+SOURCES		:=	../source source
 INCLUDES	:=	../include
 DATA		:=
 LIB		:=	$(TOPDIR)/nds/lib

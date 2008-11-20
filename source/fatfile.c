@@ -26,42 +26,6 @@
  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
  EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-	2006-07-11 - Chishm
-		* Original release
-		
-	2006-07-17 - Chishm
-		* Made all path inputs const char*
-		* Added _FAT_rename_r
-		
-	2006-08-02 - Chishm
-		* Fixed _FAT_seek_r
-
-	2006-08-13 - Chishm
-		* Moved all externally visible directory related functions to fatdir
-		
-	2007-02-11 - Chishm
-		* Propagate disc errors up to the user app
-		
-	2007-02-25 - Chishm
-		* Fixed seek to the end of a file bug
-		
-	2007-04-12 - Chishm
-		* Fixed seek to end of file when reading
-		
-	2007-11-04 - Chishm
-		* file_extend_r renamed to _FAT_file_extend_r
-		* A cluster is only allocated for a file when data is written, instead of when the file is opened
-	
-	2008-05-12 - Chishm
-		* Modified WinterMute's seek then write fix for elegance
-		* Removed resetPosition
-
-	2008-05-12 - WinterMute
-		* Modified Chishm's elegant fix to reset the read/write positions
-
-	2008-11-12 - Chishm
-		* Only set append position when file is opened for append, as suggested by rodries. Improves open speed for large files.
 */
 
 
@@ -84,7 +48,7 @@ int _FAT_open_r (struct _reent *r, void *fileStruct, const char *path, int flags
 	bool fileExists;
 	DIR_ENTRY dirEntry;
 	const char* pathEnd;
-	u32 dirCluster;
+	uint32_t dirCluster;
 	FILE_STRUCT* file = (FILE_STRUCT*) fileStruct;
 	partition = _FAT_partition_getPartitionFromPath (path);
 	
@@ -130,19 +94,19 @@ int _FAT_open_r (struct _reent *r, void *fileStruct, const char *path, int flags
 	}	
 
 	// Search for the file on the disc
-	_FAT_lock();
+	_FAT_lock(&partition->lock);
 	fileExists = _FAT_directory_entryFromPath (partition, &dirEntry, path, NULL);
 	
 	// The file shouldn't exist if we are trying to create it
 	if ((flags & O_CREAT) && (flags & O_EXCL) && fileExists) {
-		_FAT_unlock();
+		_FAT_unlock(&partition->lock);
 		r->_errno = EEXIST;
 		return -1;
 	}
 	
 	// It should not be a directory if we're openning a file, 
 	if (fileExists && _FAT_directory_isDirectory(&dirEntry)) {
-		_FAT_unlock();
+		_FAT_unlock(&partition->lock);
 		r->_errno = EISDIR;
 		return -1;
 	}
@@ -152,7 +116,7 @@ int _FAT_open_r (struct _reent *r, void *fileStruct, const char *path, int flags
 		if (flags & O_CREAT) {
 			if (partition->readOnly) {
 				// We can't write to a read-only partition
-				_FAT_unlock();
+				_FAT_unlock(&partition->lock);
 				r->_errno = EROFS;
 				return -1;
 			}	
@@ -168,7 +132,7 @@ int _FAT_open_r (struct _reent *r, void *fileStruct, const char *path, int flags
 				// Recycling dirEntry, since it needs to be recreated anyway
 				if (!_FAT_directory_entryFromPath (partition, &dirEntry, path, pathEnd) ||
 					!_FAT_directory_isDirectory(&dirEntry)) {
-					_FAT_unlock();
+					_FAT_unlock(&partition->lock);
 					r->_errno = ENOTDIR;
 					return -1;
 				}
@@ -186,13 +150,13 @@ int _FAT_open_r (struct _reent *r, void *fileStruct, const char *path, int flags
 			u16_to_u8array (dirEntry.entryData, DIR_ENTRY_cDate, _FAT_filetime_getDateFromRTC());
 			
 			if (!_FAT_directory_addEntry (partition, &dirEntry, dirCluster)) {
-				_FAT_unlock();
+				_FAT_unlock(&partition->lock);
 				r->_errno = ENOSPC;
 				return -1;
 			}
 		} else {
 			// file doesn't exist, and we aren't creating it
-			_FAT_unlock();
+			_FAT_unlock(&partition->lock);
 			r->_errno = ENOENT;
 			return -1;
 		}
@@ -210,7 +174,7 @@ int _FAT_open_r (struct _reent *r, void *fileStruct, const char *path, int flags
 	
 	// Make sure we aren't trying to write to a read-only file
 	if (file->write && !_FAT_directory_isWritable(&dirEntry)) {
-		_FAT_unlock();
+		_FAT_unlock(&partition->lock);
 		r->_errno = EROFS;
 		return -1;
 	}	
@@ -257,25 +221,39 @@ int _FAT_open_r (struct _reent *r, void *fileStruct, const char *path, int flags
 		file->appendPosition = file->rwPosition;
 	}
 
+	file->modified = false;
+
 	file->inUse = true;
 	
+	// Insert this file into the double-linked list of open files
 	partition->openFileCount += 1;
-	_FAT_unlock();
+	if (partition->firstOpenFile) {
+		file->nextOpenFile = partition->firstOpenFile;
+		partition->firstOpenFile->prevOpenFile = file;
+	} else {
+		file->nextOpenFile = NULL;
+	}
+	file->prevOpenFile = NULL;
+	partition->firstOpenFile = file;
+	
+	_FAT_unlock(&partition->lock);
 	
 	return (int) file;
 }
 
-int _FAT_close_r (struct _reent *r, int fd) {
-	FILE_STRUCT* file = (FILE_STRUCT*)  fd;
-	u8 dirEntryData[DIR_ENTRY_DATA_SIZE];
-	
-	_FAT_lock();
-	if (!file->inUse) {
-		_FAT_unlock();
-		r->_errno = EBADF;
-		return -1;
+/* 
+Synchronizes the file data to disc.
+Does no locking of its own -- lock the partition before calling.
+Returns 0 on success, an error code on failure.
+*/
+int _FAT_syncToDisc (FILE_STRUCT* file) {
+	uint8_t dirEntryData[DIR_ENTRY_DATA_SIZE];
+
+	if (!file || !file->inUse) {
+		return EBADF;
 	}
-	if (file->write) {
+	
+	if (file->write && file->modified) {
 		// Load the old entry
 		_FAT_cache_readPartialSector (file->partition->cache, dirEntryData, 
 			_FAT_fat_clusterToSector(file->partition, file->dirEntryEnd.cluster) + file->dirEntryEnd.sector,
@@ -295,6 +273,9 @@ int _FAT_close_r (struct _reent *r, int fd) {
 		
 		// Access date
 		u16_to_u8array (dirEntryData, DIR_ENTRY_aDate, _FAT_filetime_getDateFromRTC());
+		
+		// Set archive attribute
+		dirEntryData[DIR_ENTRY_attributes] |= ATTRIB_ARCH;
 
 		// Write the new entry
 		_FAT_cache_writePartialSector (file->partition->cache, dirEntryData, 
@@ -303,47 +284,73 @@ int _FAT_close_r (struct _reent *r, int fd) {
 
 		// Flush any sectors in the disc cache
 		if (!_FAT_cache_flush(file->partition->cache)) {
-			_FAT_unlock();
-			r->_errno = EIO;
-			return -1;
+			return EIO;
 		}
-
 	}
 	
-	file->inUse = false;		
-	file->partition->openFileCount -= 1;
-	_FAT_unlock();
+	file->modified = false;
 	
 	return 0;
 }
 
-int _FAT_read_r (struct _reent *r, int fd, char *ptr, int len) {
+
+int _FAT_close_r (struct _reent *r, int fd) {
 	FILE_STRUCT* file = (FILE_STRUCT*)  fd;
+	int ret = 0;
 	
+	if (!file->inUse) {
+		r->_errno = EBADF;
+		return -1;
+	}
+	
+	_FAT_lock(&file->partition->lock);
+
+	ret = _FAT_syncToDisc (file);
+	if (ret != 0) {
+		r->_errno = ret;
+		ret = -1;
+	}
+	
+	file->inUse = false;
+	
+	// Remove this file from the double-linked list of open files
+	file->partition->openFileCount -= 1;
+	if (file->nextOpenFile) {
+		file->nextOpenFile->prevOpenFile = file->prevOpenFile;
+	}
+	if (file->prevOpenFile) {
+		file->prevOpenFile->nextOpenFile = file->nextOpenFile;
+	} else {
+		file->partition->firstOpenFile = file->nextOpenFile;
+	}
+
+	_FAT_unlock(&file->partition->lock);
+	
+	return ret;
+}
+
+ssize_t _FAT_read_r (struct _reent *r, int fd, char *ptr, size_t len) {
+	FILE_STRUCT* file = (FILE_STRUCT*)  fd;
 	PARTITION* partition;
 	CACHE* cache;
-	
 	FILE_POSITION position;
-	u32 tempNextCluster;
-	
-	int tempVar;
-
-	u32 remain;
-
+	uint32_t tempNextCluster;
+	unsigned int tempVar;
+	size_t remain;
 	bool flagNoError = true;
 
 	// Make sure we can actually read from the file
-	_FAT_lock();
 	if ((file == NULL) || !file->inUse || !file->read) {
-		_FAT_unlock();
 		r->_errno = EBADF;
 		return -1;
 	}
 
+	partition = file->partition;
+	_FAT_lock(&partition->lock);
+
 	// Don't try to read if the read pointer is past the end of file
 	if (file->currentPosition >= file->filesize || file->startCluster == CLUSTER_FREE) {
 		r->_errno = EOVERFLOW;
-		_FAT_unlock();
 		return 0;
 	}
 	
@@ -355,15 +362,11 @@ int _FAT_read_r (struct _reent *r, int fd, char *ptr, int len) {
 	
 	// Short circuit cases where len is 0 (or less)
 	if (len <= 0) {
-		_FAT_unlock();
 		return 0;
 	}
 
 	remain = len;
-
 	position = file->rwPosition;
-	
-	partition = file->partition;
 	cache = file->partition->cache;
 
 	// Align to sector
@@ -480,7 +483,7 @@ int _FAT_read_r (struct _reent *r, int fd, char *ptr, int len) {
 	file->rwPosition = position;
 	file->currentPosition += len;
 
-	_FAT_unlock();
+	_FAT_unlock(&partition->lock);
 	return len;
 }
 
@@ -490,37 +493,33 @@ Extend a file so that the size is the same as the rwPosition
 static bool _FAT_file_extend_r (struct _reent *r, FILE_STRUCT* file) {
 	PARTITION* partition = file->partition;
 	CACHE* cache = file->partition->cache;
-	
 	FILE_POSITION position;
-	
-	u32 remain;
-	
-	u8 zeroBuffer [BYTES_PER_READ] = {0};	
-	
-	u32 tempNextCluster;
+	uint8_t zeroBuffer [BYTES_PER_READ] = {0};	
+	uint32_t remain;
+	uint32_t tempNextCluster;
 
 	position.byte = file->filesize % BYTES_PER_READ;
 	position.sector = (file->filesize % partition->bytesPerCluster) / BYTES_PER_READ;
 	// It is assumed that there is always a startCluster
 	// This will be true when _FAT_file_extend_r is called from _FAT_write_r
 	position.cluster = _FAT_fat_lastCluster (partition, file->startCluster);
-	
+
 	remain = file->currentPosition - file->filesize;
 	
-	if ((remain > 0) && (file->filesize > 0) && (position.sector == 0)) {
+	if ((remain > 0) && (file->filesize > 0) && (position.sector == 0) && (position.byte  == 0)) {
 		// Get a new cluster on the edge of a cluster boundary
 		tempNextCluster = _FAT_fat_linkFreeCluster(partition, position.cluster);
 		if (!_FAT_fat_isValidCluster(partition, tempNextCluster)) {
 			// Couldn't get a cluster, so abort
 			r->_errno = ENOSPC;
 			return false;
-		} else {
-			position.cluster = tempNextCluster;
-		}
+		} 
+		position.cluster = tempNextCluster;
+		position.sector = 0;
 	}
 		
-	// Only need to clear to the end of the sector
 	if (remain + position.byte < BYTES_PER_READ) {
+		// Only need to clear to the end of the sector
 		_FAT_cache_writePartialSector (cache, zeroBuffer, 
 			_FAT_fat_clusterToSector (partition, position.cluster) + position.sector, position.byte, remain);
 		position.byte += remain;
@@ -543,9 +542,8 @@ static bool _FAT_file_extend_r (struct _reent *r, FILE_STRUCT* file) {
 					// Couldn't get a cluster, so abort
 					r->_errno = ENOSPC;
 					return false;
-				} else {
-					position.cluster = tempNextCluster;
 				}
+				position.cluster = tempNextCluster;
 			}
 	
 			_FAT_disc_writeSectors (partition->disc,  
@@ -566,9 +564,8 @@ static bool _FAT_file_extend_r (struct _reent *r, FILE_STRUCT* file) {
 				// Couldn't get a cluster, so abort
 				r->_errno = ENOSPC;
 				return false;
-			} else {
-				position.cluster = tempNextCluster;
 			}
+			position.cluster = tempNextCluster;
 		}
 		
 		if (remain > 0) {
@@ -584,46 +581,45 @@ static bool _FAT_file_extend_r (struct _reent *r, FILE_STRUCT* file) {
 }
 
 
-int _FAT_write_r (struct _reent *r,int fd, const char *ptr, int len) {
+ssize_t _FAT_write_r (struct _reent *r, int fd, const char *ptr, size_t len) {
 	FILE_STRUCT* file = (FILE_STRUCT*)  fd;
-	
 	PARTITION* partition;
 	CACHE* cache;
-	
 	FILE_POSITION position;
-	u32 tempNextCluster;
-	
-	int tempVar;
-
-	u32 remain;
-
+	uint32_t tempNextCluster;
+	unsigned int tempVar;
+	size_t remain;
 	bool flagNoError = true;
 	bool flagAppending = false;
 
 	// Make sure we can actually write to the file
-	_FAT_lock();
 	if ((file == NULL) || !file->inUse || !file->write) {
-		_FAT_unlock();
 		r->_errno = EBADF;
 		return -1;
 	}
 	
+	partition = file->partition;
+	cache = file->partition->cache;
+	_FAT_lock(&partition->lock);
+
+	// Only write up to the maximum file size, taking into account wrap-around of ints
+	if (remain + file->filesize > FILE_MAX_SIZE || len + file->filesize < file->filesize) {
+		len = FILE_MAX_SIZE - file->filesize;	
+	}
+	remain = len;
+	
 	// Short circuit cases where len is 0 (or less)
 	if (len <= 0) {
-		_FAT_unlock();
+		_FAT_unlock(&partition->lock);
 		return 0;
 	}
 	
-	partition = file->partition;
-	cache = file->partition->cache;
-	remain = len;
-
 	// Get a new cluster for the start of the file if required
 	if (file->startCluster == CLUSTER_FREE) {
 		tempNextCluster = _FAT_fat_linkFreeCluster (partition, CLUSTER_FREE);
 		if (!_FAT_fat_isValidCluster(partition, tempNextCluster)) {
 			// Couldn't get a cluster, so abort immediately
-			_FAT_unlock();
+			_FAT_unlock(&partition->lock);
 			r->_errno = ENOSPC;
 			return -1;
 		}
@@ -646,7 +642,7 @@ int _FAT_write_r (struct _reent *r,int fd, const char *ptr, int len) {
 		// If the write pointer is past the end of the file, extend the file to that size
 		if (file->currentPosition > file->filesize) {
 			if (!_FAT_file_extend_r (r, file)) {
-				_FAT_unlock();
+				_FAT_unlock(&partition->lock);
 				return -1;
 			}
 		}
@@ -796,10 +792,11 @@ int _FAT_write_r (struct _reent *r,int fd, const char *ptr, int len) {
 	}
 
 	
-	// Amount read is the originally requested amount minus stuff remaining
+	// Amount written is the originally requested amount minus stuff remaining
 	len = len - remain;
 
 	// Update file information
+	file->modified = true;
 	if (file->append) {
 		// Appending doesn't affect the read pointer
 		file->appendPosition = position;
@@ -813,58 +810,60 @@ int _FAT_write_r (struct _reent *r,int fd, const char *ptr, int len) {
 		}
 	}
 	
-	_FAT_unlock();
+	_FAT_unlock(&partition->lock);
 
 	return len;
 }
 
 
-int _FAT_seek_r (struct _reent *r, int fd, int pos, int dir) {
+off_t _FAT_seek_r (struct _reent *r, int fd, off_t pos, int dir) {
 	FILE_STRUCT* file = (FILE_STRUCT*)  fd;
-	
 	PARTITION* partition;
-
-	u32 cluster, nextCluster;
+	uint32_t cluster, nextCluster;
 	int clusCount;
-	int position;
+	off_t newPosition;
+	uint32_t position;
 
-	_FAT_lock();
 	if ((file == NULL) || (file->inUse == false))	 {
 		// invalid file
-		_FAT_unlock();
 		r->_errno = EBADF;
 		return -1;
 	}
 
 	partition = file->partition;
+	_FAT_lock(&partition->lock);
 
 	switch (dir) {
 		case SEEK_SET:
-			position = pos;
+			newPosition = pos;
 			break;
 		case SEEK_CUR:
-			position = file->currentPosition + pos;
+			newPosition = (off_t)file->currentPosition + pos;
 			break;
 		case SEEK_END:
-			position = file->filesize + pos;
+			newPosition = (off_t)file->filesize + pos;
 			break;
 		default:
-			_FAT_unlock();
+			_FAT_unlock(&partition->lock);
 			r->_errno = EINVAL;
 			return -1;
 	}
 	
-	if ((pos > 0) && (position < 0)) {
+	if ((pos > 0) && (newPosition < 0)) {
+		_FAT_unlock(&partition->lock);
 		r->_errno = EOVERFLOW;
-		_FAT_unlock();
 		return -1;
 	}
 
-	if (position < 0) {
-		_FAT_unlock();
+	// newPosition can only be larger than the FILE_MAX_SIZE on platforms where 
+	// off_t is larger than 32 bits.
+	if (newPosition < 0 || ((sizeof(newPosition) > 4) && newPosition > (off_t)FILE_MAX_SIZE)) {
+		_FAT_unlock(&partition->lock);
 		r->_errno = EINVAL;
 		return -1;
 	}
+	
+	position = (uint32_t)newPosition;
 	
 	// Only change the read/write position if it is within the bounds of the current filesize,
 	// or at the very edge of the file
@@ -897,7 +896,7 @@ int _FAT_seek_r (struct _reent *r, int fd, int pos, int dir) {
 				file->rwPosition.sector = partition->sectorsPerCluster;
 				file->rwPosition.byte = 0;
 			} else {
-				_FAT_unlock();
+				_FAT_unlock(&partition->lock);
 				r->_errno = EINVAL;
 				return -1;
 			}
@@ -909,7 +908,7 @@ int _FAT_seek_r (struct _reent *r, int fd, int pos, int dir) {
 	// Save position
 	file->currentPosition = position;
 	
-	_FAT_unlock();
+	_FAT_unlock(&partition->lock);
 	return position;
 }
 
@@ -917,27 +916,24 @@ int _FAT_seek_r (struct _reent *r, int fd, int pos, int dir) {
 
 int _FAT_fstat_r (struct _reent *r, int fd, struct stat *st) {
 	FILE_STRUCT* file = (FILE_STRUCT*)  fd;
-	
 	PARTITION* partition;
-	
 	DIR_ENTRY fileEntry;
 
-	_FAT_lock();
 	if ((file == NULL) || (file->inUse == false))	 {
 		// invalid file
-		_FAT_unlock();
 		r->_errno = EBADF;
 		return -1;
 	}
 
 	partition = file->partition;
+	_FAT_lock(&partition->lock);
 	
 	// Get the file's entry data
 	fileEntry.dataStart = file->dirEntryStart;
 	fileEntry.dataEnd = file->dirEntryEnd;
 	
 	if (!_FAT_directory_entryFromPosition (partition, &fileEntry)) {
-		_FAT_unlock();
+		_FAT_unlock(&partition->lock);
 		r->_errno = EIO;
 		return -1;
 	}
@@ -949,7 +945,142 @@ int _FAT_fstat_r (struct _reent *r, int fd, struct stat *st) {
   	st->st_ino = (ino_t)(file->startCluster);		// The file serial number is the start cluster
 	st->st_size = file->filesize;					// File size 
 	
-	_FAT_unlock();
+	_FAT_unlock(&partition->lock);
 	return 0;
 }
+
+int _FAT_ftruncate_r (struct _reent *r, int fd, off_t len) {
+	FILE_STRUCT* file = (FILE_STRUCT*)  fd;
+	PARTITION* partition;
+	int ret=0;
+	uint32_t newSize = (uint32_t)len;
+
+	if (len < 0) {
+		// Trying to truncate to a negative size
+		r->_errno = EINVAL;
+		return -1;
+	}
+	
+	if ((sizeof(len) > 4) && len > (off_t)FILE_MAX_SIZE) {
+		// Trying to extend the file beyond what FAT supports
+		r->_errno = EFBIG;
+		return -1;
+	}
+
+	if (!file || !file->inUse) {
+		// invalid file
+		r->_errno = EBADF;
+		return -1;
+	}
+	
+	if (!file->write) {
+		// Read-only file
+		r->_errno = EINVAL;
+		return -1;
+	}
+
+	partition = file->partition;
+	_FAT_lock(&partition->lock);
+	
+	if (newSize > file->filesize) {
+		// Expanding the file
+		FILE_POSITION savedPosition;
+		uint32_t savedOffset;
+		// Get a new cluster for the start of the file if required
+		if (file->startCluster == CLUSTER_FREE) {
+			uint32_t tempNextCluster = _FAT_fat_linkFreeCluster (partition, CLUSTER_FREE);
+			if (!_FAT_fat_isValidCluster(partition, tempNextCluster)) {
+				// Couldn't get a cluster, so abort immediately
+				_FAT_unlock(&partition->lock);
+				r->_errno = ENOSPC;
+				return -1;
+			}
+			file->startCluster = tempNextCluster;
+
+			file->rwPosition.cluster = file->startCluster;
+			file->rwPosition.sector =  0;
+			file->rwPosition.byte = 0;
+		}
+		// Save the read/write pointer
+		savedPosition = file->rwPosition;
+		savedOffset = file->currentPosition;
+		// Set the position to the new size
+		file->currentPosition = newSize;
+		// Extend the file to the new position
+		if (!_FAT_file_extend_r (r, file)) {
+			ret = -1;
+		}
+		// Set the append position to the new rwPointer
+		if (file->append) {
+			file->appendPosition = file->rwPosition;
+		}
+		// Restore the old rwPointer;
+		file->rwPosition = savedPosition;
+		file->currentPosition = savedOffset;
+	} else if (newSize < file->filesize){
+		// Shrinking the file
+		if (len == 0) {
+			// Cutting the file down to nothing, clear all clusters used
+			_FAT_fat_clearLinks (partition, file->startCluster);
+			file->startCluster = CLUSTER_FREE;
+			
+			file->appendPosition.cluster = CLUSTER_FREE;
+			file->appendPosition.sector = 0;
+			file->appendPosition.byte = 0;
+		} else {
+			// Trimming the file down to the required size
+			unsigned int chainLength;
+			uint32_t lastCluster;
+			
+			// Drop the unneeded end of the cluster chain.
+			// If the end falls on a cluster boundary, drop that cluster too,
+			// then set a flag to allocate a cluster as needed
+			chainLength = ((newSize-1) / partition->bytesPerCluster) + 1;
+			lastCluster = _FAT_fat_trimChain (partition, file->startCluster, chainLength);
+
+			if (file->append) {
+				file->appendPosition.byte = newSize % BYTES_PER_READ;
+				// Does the end of the file fall on the edge of a cluster?
+				if (newSize % partition->bytesPerCluster == 0) {
+					// Set a flag to allocate a new cluster
+					file->appendPosition.sector = partition->sectorsPerCluster;
+				} else {
+					file->appendPosition.sector = (newSize % partition->bytesPerCluster) / BYTES_PER_READ;
+				}
+				file->appendPosition.cluster = lastCluster;
+			}
+		}
+	} else {
+		// Truncating to same length, so don't do anything
+	}
+	
+	file->filesize = newSize;
+	file->modified = true;
+	
+	_FAT_unlock(&partition->lock);
+	return ret;
+}
+
+int _FAT_fsync_r (struct _reent *r, int fd) {
+	FILE_STRUCT* file = (FILE_STRUCT*)  fd;
+	int ret = 0;
+	
+	if (!file->inUse) {
+		r->_errno = EBADF;
+		return -1;
+	}
+	
+	_FAT_lock(&file->partition->lock);
+
+	ret = _FAT_syncToDisc (file);
+	if (ret != 0) {
+		r->_errno = ret;
+		ret = -1;
+	}
+	
+	_FAT_unlock(&file->partition->lock);
+	
+	return ret;
+}
+
 	

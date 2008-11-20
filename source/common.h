@@ -24,13 +24,15 @@
  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
  EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-	2006-07-11 - Chishm
-		* Original release
 */
 
 #ifndef _COMMON_H
 #define _COMMON_H
+
+#define BYTES_PER_READ 512
+#include <fat.h>
+#include <stddef.h>
+#include <stdint.h>
 
 // When compiling for NDS, make sure NDS is defined
 #ifndef NDS
@@ -39,24 +41,34 @@
  #endif
 #endif
 
+// Platform specific includes
 #if defined(__gamecube__) || defined (__wii__)
    #include <gctypes.h>
-#else
-#  ifdef NDS
+   #include <ogc/disc_io.h>
+   #include <gccore.h>
+#elif defined(NDS)
    #include <nds/ndstypes.h>
    #include <nds/system.h>
-   
-#  else
-   #include "gba_types.h"
-#  endif
+   #include <nds/disc_io.h>
+#elif defined(GBA)
+   #include <gba_types.h>
+   #include <disc_io.h>
 #endif
 
-#define BYTES_PER_READ 512
-
-#ifndef NULL
- #define NULL 0
+// Platform specific options
+#if   defined (__wii__)
+   #define DEFAULT_CACHE_PAGES 8
+   #define USE_LWP_LOCK
+   #define USE_RTC_TIME
+#elif defined (__gamecube__)
+   #define DEFAULT_CACHE_PAGES 8
+   #define USE_LWP_LOCK
+   #define USE_RTC_TIME
+#elif defined (NDS)
+   #define DEFAULT_CACHE_PAGES 8
+   #define USE_RTC_TIME
+#elif defined (GBA)
+   #define DEFAULT_CACHE_PAGES 2
 #endif
-
-#include <fat.h>
 
 #endif // _COMMON_H
