@@ -45,16 +45,16 @@ The list is terminated by a NULL/NULL entry.
 #include <ogc/usbstorage.h>
 
 static const DISC_INTERFACE* get_io_gcsda (void) {
-	return &io_gcsda;
+	return &__io_gcsda;
 }
 static const DISC_INTERFACE* get_io_gcsdb (void) {
-	return &io_gcsdb;
+	return &__io_gcsdb;
 }
 static const DISC_INTERFACE* get_io_wiisd (void) {
-	return &io_wiisd;
+	return &__io_wiisd;
 }
 static const DISC_INTERFACE* get_io_usbstorage (void) {
-	return &io_usbstorage;
+	return &__io_usbstorage;
 }
 const INTERFACE_ID _FAT_disc_interfaces[] = {
 	{"sd", get_io_wiisd},
@@ -70,10 +70,10 @@ const INTERFACE_ID _FAT_disc_interfaces[] = {
 #include <sdcard/wiisd_io.h>
 
 static const DISC_INTERFACE* get_io_gcsda (void) {
-	return &io_gcsda;
+	return &__io_gcsda;
 }
 static const DISC_INTERFACE* get_io_gcsdb (void) {
-	return &io_gcsdb;
+	return &__io_gcsdb;
 }
 
 const INTERFACE_ID _FAT_disc_interfaces[] = {
