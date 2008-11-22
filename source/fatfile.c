@@ -329,6 +329,7 @@ int _FAT_close_r (struct _reent *r, int fd) {
 	return ret;
 }
 
+
 ssize_t _FAT_read_r (struct _reent *r, int fd, char *ptr, size_t len) {
 	FILE_STRUCT* file = (FILE_STRUCT*)  fd;
 	PARTITION* partition;
@@ -426,29 +427,42 @@ ssize_t _FAT_read_r (struct _reent *r, int fd, char *ptr, size_t len) {
 		}
 	}
 
-	// Read in whole clusters
+	// Read in whole clusters, contiguous blocks at a time
 	while ((remain >= partition->bytesPerCluster) && flagNoError) {
-		if ( !_FAT_disc_readSectors (
-				partition->disc, _FAT_fat_clusterToSector (partition, position.cluster),
-				partition->sectorsPerCluster, ptr)) 
+		uint32_t chunkEnd;
+		uint32_t nextChunkStart = position.cluster;
+		size_t chunkSize = 0;
+	
+		do {
+			chunkEnd = nextChunkStart;
+			nextChunkStart = _FAT_fat_nextCluster (partition, chunkEnd);
+			chunkSize += partition->bytesPerCluster;
+		} while ((nextChunkStart == chunkEnd + 1) && 
+#ifdef LIMIT_SECTORS
+		 	(chunkSize + partition->bytesPerCluster <= LIMIT_SECTORS * BYTES_PER_READ) && 
+#endif
+			(chunkSize + partition->bytesPerCluster <= remain));
+		
+		if (!_FAT_disc_readSectors (partition->disc, _FAT_fat_clusterToSector (partition, position.cluster),
+				chunkSize / BYTES_PER_READ, ptr)) 
 		{
 			flagNoError = false;
 			r->_errno = EIO;
 			break;
 		}
-		ptr += partition->bytesPerCluster;
-		remain -= partition->bytesPerCluster;
+		ptr += chunkSize;
+		remain -= chunkSize;
 
 		// Advance to next cluster
-		tempNextCluster = _FAT_fat_nextCluster(partition, position.cluster);
-		if ((remain == 0) && (tempNextCluster == CLUSTER_EOF)) {
+		if ((remain == 0) && (nextChunkStart == CLUSTER_EOF)) {
 			position.sector = partition->sectorsPerCluster;
-		} else if (!_FAT_fat_isValidCluster(partition, tempNextCluster)) {
+			position.cluster = chunkEnd;
+		} else if (!_FAT_fat_isValidCluster(partition, nextChunkStart)) {
 			r->_errno = EIO;
 			flagNoError = false;
 		} else {
 			position.sector = 0;
-			position.cluster = tempNextCluster;
+			position.cluster = nextChunkStart;
 		}
 	}
 
@@ -735,30 +749,45 @@ ssize_t _FAT_write_r (struct _reent *r, int fd, const char *ptr, size_t len) {
 
 	// Write whole clusters
 	while ((remain >= partition->bytesPerCluster) && flagNoError) {
+		uint32_t chunkEnd;
+		uint32_t nextChunkStart = position.cluster;
+		size_t chunkSize = 0;
+	
+		do {
+			chunkEnd = nextChunkStart;
+			nextChunkStart = _FAT_fat_nextCluster (partition, chunkEnd);
+			if ((nextChunkStart == CLUSTER_EOF) || (nextChunkStart == CLUSTER_FREE)) {
+				// Ran out of clusters so get a new one
+				nextChunkStart = _FAT_fat_linkFreeCluster(partition, chunkEnd);
+			} 
+			if (!_FAT_fat_isValidCluster(partition, nextChunkStart)) {
+				// Couldn't get a cluster, so abort
+				r->_errno = ENOSPC;
+				flagNoError = false;
+			} else {
+				chunkSize += partition->bytesPerCluster;
+			}
+		} while (flagNoError && (nextChunkStart == chunkEnd + 1) && 
+#ifdef LIMIT_SECTORS
+		 	(chunkSize + partition->bytesPerCluster <= LIMIT_SECTORS * BYTES_PER_READ) && 
+#endif
+			(chunkSize + partition->bytesPerCluster <= remain));
+
 		if ( !_FAT_disc_writeSectors (partition->disc, _FAT_fat_clusterToSector(partition, position.cluster),
-			partition->sectorsPerCluster, ptr)) 
+			chunkSize / BYTES_PER_READ, ptr)) 
 		{
 			flagNoError = false;
 			r->_errno = EIO;
 			break;
 		}
-		ptr += partition->bytesPerCluster;
-		remain -= partition->bytesPerCluster;
-		if (remain > 0) {
-			tempNextCluster = _FAT_fat_nextCluster(partition, position.cluster);
-			if ((tempNextCluster == CLUSTER_EOF) || (tempNextCluster == CLUSTER_FREE)) {
-				// Ran out of clusters so get a new one
-				tempNextCluster = _FAT_fat_linkFreeCluster(partition, position.cluster);
-			} 
-			if (!_FAT_fat_isValidCluster(partition, tempNextCluster)) {
-				// Couldn't get a cluster, so abort
-				r->_errno = ENOSPC;
-				flagNoError = false;
-			} else {
-				position.cluster = tempNextCluster;
-			}
+		ptr += chunkSize;
+		remain -= chunkSize;
+		
+		if (_FAT_fat_isValidCluster(partition, nextChunkStart)) {
+			position.cluster = nextChunkStart;
 		} else {
 			// Allocate a new cluster when next writing the file
+			position.cluster = chunkEnd;
 			position.sector = partition->sectorsPerCluster;
 		}
 	}

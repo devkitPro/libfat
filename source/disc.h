@@ -51,8 +51,9 @@ static inline bool _FAT_disc_isInserted (const DISC_INTERFACE* disc) {
 
 /*
 Read numSectors sectors from a disc, starting at sector. 
-numSectors is between 1 and 256
-sector is from 0 to 2^28
+numSectors is between 1 and LIMIT_SECTORS if LIMIT_SECTORS is defined,
+else it is at least 1
+sector is 0 or greater
 buffer is a pointer to the memory to fill
 */
 static inline bool _FAT_disc_readSectors (const DISC_INTERFACE* disc, sec_t sector, sec_t numSectors, void* buffer) {
@@ -61,8 +62,9 @@ static inline bool _FAT_disc_readSectors (const DISC_INTERFACE* disc, sec_t sect
 
 /*
 Write numSectors sectors to a disc, starting at sector. 
-numSectors is between 1 and 256
-sector is from 0 to 2^28
+numSectors is between 1 and LIMIT_SECTORS if LIMIT_SECTORS is defined,
+else it is at least 1
+sector is 0 or greater
 buffer is a pointer to the memory to read from
 */
 static inline bool _FAT_disc_writeSectors (const DISC_INTERFACE* disc, sec_t sector, sec_t numSectors, const void* buffer) {

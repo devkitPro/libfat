@@ -67,8 +67,10 @@
 #elif defined (NDS)
    #define DEFAULT_CACHE_PAGES 8
    #define USE_RTC_TIME
+   #define LIMIT_SECTORS 128
 #elif defined (GBA)
    #define DEFAULT_CACHE_PAGES 2
+   #define LIMIT_SECTORS 128
 #endif
 
 #endif // _COMMON_H
