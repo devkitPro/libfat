@@ -103,7 +103,7 @@ PARTITION* _FAT_partition_constructor (const DISC_INTERFACE* disc, uint32_t cach
 	uint8_t sectorBuffer[BYTES_PER_READ] = {0};
 
 	// Read first sector of disc
-	if ( !_FAT_disc_readSectors (disc, 0, 1, sectorBuffer)) {
+	if (!_FAT_disc_readSectors (disc, startSector, 1, sectorBuffer)) {
 		return NULL;
 	}
 
@@ -130,12 +130,20 @@ PARTITION* _FAT_partition_constructor (const DISC_INTERFACE* disc, uint32_t cach
 			for (i=0x1BE; (i < 0x1FE) && (sectorBuffer[i+0x04] == 0x00); i+= 0x10);
 		}
 		
-		// Go to first valid partition
 		if ( i != 0x1FE) {
-			// Make sure it found a partition
+			// Go to first valid partition
 			startSector = u8array_to_u32(sectorBuffer, 0x8 + i);
+			// Load the BPB
+			if (!_FAT_disc_readSectors (disc, startSector, 1, sectorBuffer)) {
+					return NULL;
+			}
+			// Make sure it is a valid BPB
+			if ( (sectorBuffer[BPB_bootSig_55] != 0x55) || (sectorBuffer[BPB_bootSig_AA] != 0xAA)) {
+				return NULL;
+			}
 		} else {
-			startSector = 0;	// No partition found, assume this is a MBR free disk
+			// No partition found, assume this is a MBR free disk
+			startSector = 0;
 		}
 	}
 
@@ -143,11 +151,6 @@ PARTITION* _FAT_partition_constructor (const DISC_INTERFACE* disc, uint32_t cach
 	if (memcmp(sectorBuffer + BPB_FAT16_fileSysType, FAT_SIG, sizeof(FAT_SIG)) && 
 		memcmp(sectorBuffer + BPB_FAT32_fileSysType, FAT_SIG, sizeof(FAT_SIG)))
 	{
-		return NULL;
-	}
-
-	// Read in boot sector
-	if ( !_FAT_disc_readSectors (disc, startSector, 1, sectorBuffer)) {
 		return NULL;
 	}
 
@@ -253,8 +256,10 @@ PARTITION* _FAT_partition_getPartitionFromPath (const char* path) {
 	devops = GetDeviceOpTab (path);
 	
 	if (!devops) {
+iprintf ("\n%s %d\n", __FILE__, __LINE__);
 		return NULL;
 	}
 	
+iprintf ("\n%s %d\n", __FILE__, __LINE__);
 	return (PARTITION*)devops->deviceData;
 }
