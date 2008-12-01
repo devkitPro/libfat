@@ -256,10 +256,14 @@ PARTITION* _FAT_partition_getPartitionFromPath (const char* path) {
 	devops = GetDeviceOpTab (path);
 	
 	if (!devops) {
-iprintf ("\n%s %d\n", __FILE__, __LINE__);
+#ifdef FAT_DEBUG		
+		iprintf ("\n%s %d\n", __FILE__, __LINE__);
+#endif
 		return NULL;
 	}
 	
-iprintf ("\n%s %d\n", __FILE__, __LINE__);
+#ifdef FAT_DEBUG		
+	iprintf ("\n%s %d\n", __FILE__, __LINE__);
+#endif
 	return (PARTITION*)devops->deviceData;
 }
