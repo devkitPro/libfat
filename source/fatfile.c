@@ -43,6 +43,8 @@
 #include "filetime.h"
 #include "lock.h"
 
+#include <stdio.h>
+
 int _FAT_open_r (struct _reent *r, void *fileStruct, const char *path, int flags, int mode) {
 	PARTITION* partition = NULL;
 	bool fileExists;

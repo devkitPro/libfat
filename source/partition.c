@@ -222,6 +222,7 @@ PARTITION* _FAT_partition_constructor (const DISC_INTERFACE* disc, uint32_t cach
 	
 	// There are currently no open files on this partition
 	partition->openFileCount = 0;
+	partition->firstOpenFile = NULL;
 
 	return partition;
 }

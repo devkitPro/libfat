@@ -55,16 +55,16 @@ struct _FILE_STRUCT {
 	uint32_t             currentPosition;
 	FILE_POSITION        rwPosition;
 	FILE_POSITION        appendPosition;
-	bool                 read;
-	bool                 write;
-	bool                 append;
-	bool                 inUse;
-	bool                 modified;
 	DIR_ENTRY_POSITION   dirEntryStart;		// Points to the start of the LFN entries of a file, or the alias for no LFN
 	DIR_ENTRY_POSITION   dirEntryEnd;		// Always points to the file's alias entry
 	PARTITION*           partition;
 	struct _FILE_STRUCT* prevOpenFile;		// The previous entry in a double-linked list of open files
 	struct _FILE_STRUCT* nextOpenFile;		// The next entry in a double-linked list of open files
+	bool                 read;
+	bool                 write;
+	bool                 append;
+	bool                 inUse;
+	bool                 modified;
 };
 
 typedef struct _FILE_STRUCT FILE_STRUCT;

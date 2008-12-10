@@ -51,7 +51,6 @@ typedef struct {
 	const DISC_INTERFACE* disc;
 	CACHE*                cache;
 	// Info about the partition
-	bool                  readOnly;				// If this is set, then do not try writing to the disc
 	FS_TYPE               filesysType;
 	uint64_t              totalSize;
 	sec_t                 rootDirStart;
@@ -67,6 +66,7 @@ typedef struct {
 	int                   openFileCount;
 	struct _FILE_STRUCT*  firstOpenFile;		// The start of a linked list of files
 	mutex_t               lock;					// A lock for partition operations
+	bool                  readOnly;				// If this is set, then do not try writing to the disc
 } PARTITION;
 
 /*
