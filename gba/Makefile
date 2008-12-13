@@ -121,7 +121,7 @@ clean:
 all: $(GBABIN)
 
 dist-bin:
-	@tar --exclude=*CVS* -cvjf $(TOPDIR)/distribute/$(DATESTRING)/libfat-gba-$(DATESTRING).tar.bz2 include lib
+	@tar --exclude=*CVS* -cvjf $(TOPDIR)/distribute/$(VERSTRING)/libfat-gba-$(VERSTRING).tar.bz2 include lib
 	
 install:
 	cp lib/libfat.a $(DEVKITPRO)/libgba/lib

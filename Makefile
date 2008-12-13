@@ -4,13 +4,18 @@ endif
  
 export TOPDIR	:=	$(CURDIR)
  
-export DATESTRING	:=	$(shell date +%Y)$(shell date +%m)$(shell date +%d)
+export LIBFAT_MAJOR	:= 1
+export LIBFAT_MINOR	:= 0
+export LIBFAT_PATCH	:= 3
+
+export VERSTRING	:=	$(LIBFAT_MAJOR).$(LIBFAT_MINOR).$(LIBFAT_PATCH)
+
 
 default: release
 
 all: release dist
 
-release: nds-release gba-release cube-release wii-release
+release: include/libfatversion.h nds-release gba-release cube-release wii-release
 
 ogc-release: cube-release wii-release
 
@@ -56,27 +61,38 @@ ogc-clean:
 
 dist-bin: nds-dist-bin gba-dist-bin ogc-dist-bin
 
-nds-dist-bin: nds-release distribute/$(DATESTRING)
+nds-dist-bin: nds-release distribute/$(VERSTRING)
 	$(MAKE) -C nds dist-bin
 
-gba-dist-bin: gba-release distribute/$(DATESTRING)
+gba-dist-bin: gba-release distribute/$(VERSTRING)
 	$(MAKE) -C gba dist-bin
 
-ogc-dist-bin: ogc-release distribute/$(DATESTRING)
+ogc-dist-bin: ogc-release distribute/$(VERSTRING)
 	$(MAKE) -C libogc dist-bin
 
-dist-src: distribute/$(DATESTRING)
-	@tar --exclude=*CVS* -cvjf distribute/$(DATESTRING)/libfat-src-$(DATESTRING).tar.bz2 \
+dist-src: distribute/$(VERSTRING)
+	@tar --exclude=*CVS* -cvjf distribute/$(VERSTRING)/libfat-src-$(VERSTRING).tar.bz2 \
 	source include Makefile \
 	nds/Makefile nds/include \
 	gba/Makefile gba/include \
 	libogc/Makefile libogc/include
 
-dist: dist-bin dist-src
+dist: include/libfatversion.h dist-bin dist-src
 
-distribute/$(DATESTRING):
+distribute/$(VERSTRING):
 	@[ -d $@ ] || mkdir -p $@
 
+include/libfatversion.h : Makefile
+	@echo "#ifndef __LIBFATVERSION_H__" > $@
+	@echo "#define __LIBFATVERSION_H__" >> $@
+	@echo >> $@
+	@echo "#define _LIBFAT_MAJOR_	$(LIBFAT_MAJOR)" >> $@
+	@echo "#define _LIBFAT_MINOR_	$(LIBFAT_MINOR)" >> $@
+	@echo "#define _LIBFAT_PATCH_	$(LIBFAT_PATCH)" >> $@
+	@echo >> $@
+	@echo '#define _LIBFAT_STRING "libFAT Release '$(LIBFAT_MAJOR).$(LIBFAT_MINOR).$(LIBFAT_PATCH)'"' >> $@
+	@echo >> $@
+	@echo "#endif // __LIBFATVERSION_H__" >> $@
 
 install: nds-install gba-install ogc-install
 

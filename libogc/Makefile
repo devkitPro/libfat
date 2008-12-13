@@ -101,7 +101,7 @@ clean:
 all: $(CUBEBIN)
 
 dist-bin:
-	@tar --exclude=*CVS* -cvjf $(TOPDIR)/distribute/$(DATESTRING)/libfat-ogc-$(DATESTRING).tar.bz2 include lib
+	@tar --exclude=*CVS* -cvjf $(TOPDIR)/distribute/$(VERSTRING)/libfat-ogc-$(VERSTRING).tar.bz2 include lib
 
 install:
 	cp lib/wii/libfat.a $(DEVKITPRO)/libogc/lib/wii
