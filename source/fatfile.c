@@ -111,6 +111,9 @@ int _FAT_open_r (struct _reent *r, void *fileStruct, const char *path, int flags
 		return -1;
 	}
 
+	// We haven't modified the file yet
+	file->modified = false;
+
 	// If the file doesn't exist, create it if we're allowed to
 	if (!fileExists) {
 		if (flags & O_CREAT) {
@@ -154,6 +157,9 @@ int _FAT_open_r (struct _reent *r, void *fileStruct, const char *path, int flags
 				r->_errno = ENOSPC;
 				return -1;
 			}
+			
+			// File entry is modified
+			file->modified = true;
 		} else {
 			// file doesn't exist, and we aren't creating it
 			_FAT_unlock(&partition->lock);
@@ -189,6 +195,8 @@ int _FAT_open_r (struct _reent *r, void *fileStruct, const char *path, int flags
 		_FAT_fat_clearLinks (partition, file->startCluster);
 		file->startCluster = CLUSTER_FREE;
 		file->filesize = 0;
+		// File is modified since we just cut it all off
+		file->modified = true;
 	}
 
 	// Remember the position of this file's directory entry
@@ -220,8 +228,6 @@ int _FAT_open_r (struct _reent *r, void *fileStruct, const char *path, int flags
 		// Use something sane for the append pointer, so the whole file struct contains known values
 		file->appendPosition = file->rwPosition;
 	}
-
-	file->modified = false;
 
 	file->inUse = true;
 	
