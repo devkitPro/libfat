@@ -6,7 +6,7 @@ export TOPDIR	:=	$(CURDIR)
  
 export LIBFAT_MAJOR	:= 1
 export LIBFAT_MINOR	:= 0
-export LIBFAT_PATCH	:= 3
+export LIBFAT_PATCH	:= 4
 
 export VERSTRING	:=	$(LIBFAT_MAJOR).$(LIBFAT_MINOR).$(LIBFAT_PATCH)
 
