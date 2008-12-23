@@ -346,6 +346,11 @@ ssize_t _FAT_read_r (struct _reent *r, int fd, char *ptr, size_t len) {
 	size_t remain;
 	bool flagNoError = true;
 
+	// Short circuit cases where len is 0 (or less)
+	if (len <= 0) {
+		return 0;
+	}
+
 	// Make sure we can actually read from the file
 	if ((file == NULL) || !file->inUse || !file->read) {
 		r->_errno = EBADF;
@@ -358,6 +363,7 @@ ssize_t _FAT_read_r (struct _reent *r, int fd, char *ptr, size_t len) {
 	// Don't try to read if the read pointer is past the end of file
 	if (file->currentPosition >= file->filesize || file->startCluster == CLUSTER_FREE) {
 		r->_errno = EOVERFLOW;
+		_FAT_unlock(&partition->lock);
 		return 0;
 	}
 	
@@ -367,11 +373,6 @@ ssize_t _FAT_read_r (struct _reent *r, int fd, char *ptr, size_t len) {
 		len = file->filesize - file->currentPosition;
 	}
 	
-	// Short circuit cases where len is 0 (or less)
-	if (len <= 0) {
-		return 0;
-	}
-
 	remain = len;
 	position = file->rwPosition;
 	cache = file->partition->cache;
