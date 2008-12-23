@@ -97,10 +97,10 @@ include/libfatversion.h : Makefile
 install: nds-install gba-install ogc-install
 
 nds-install: nds-release
-	make -C nds install
+	$(MAKE) -C nds install
 
 gba-install: gba-release
-	make -C gba install
+	$(MAKE) -C gba install
 
 ogc-install: cube-release wii-release
-	make -C libogc install
+	$(MAKE) -C libogc install
