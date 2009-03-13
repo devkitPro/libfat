@@ -154,6 +154,13 @@ PARTITION* _FAT_partition_constructor (const DISC_INTERFACE* disc, uint32_t cach
 		return NULL;
 	}
 
+	// check again for the last two cases to make sure that we really have a FAT filesystem here
+	// and won't corrupt any data
+	if(memcmp(sectorBuffer + BPB_FAT16_fileSysType, "FAT", 3) != 0 && memcmp(sectorBuffer + BPB_FAT32_fileSysType, "FAT32", 5) != 0)
+	{
+		return NULL;
+	}
+
 	partition = (PARTITION*) _FAT_mem_allocate (sizeof(PARTITION));
 	if (partition == NULL) {
 		return NULL;
