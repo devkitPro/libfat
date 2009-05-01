@@ -99,7 +99,7 @@ time_t _FAT_filetime_to_time_t (uint16_t t, uint16_t d) {
 	
 	timeParts.tm_mday = d & 0x1F;
 	timeParts.tm_mon = ((d >> 5) & 0x0F) - 1;
-	timeParts.tm_year = d >> 9;
+	timeParts.tm_year = (d >> 9) + 80;
 	
 	timeParts.tm_isdst = 0;
 	
