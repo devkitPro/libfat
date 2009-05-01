@@ -388,6 +388,9 @@ int _FAT_mkdir_r (struct _reent *r, const char *path, int mode) {
 	dirEntry.entryData[DIR_ENTRY_cTime_ms] = 0;
 	u16_to_u8array (dirEntry.entryData, DIR_ENTRY_cTime, _FAT_filetime_getTimeFromRTC());
 	u16_to_u8array (dirEntry.entryData, DIR_ENTRY_cDate, _FAT_filetime_getDateFromRTC());
+	u16_to_u8array (dirEntry.entryData, DIR_ENTRY_mTime, _FAT_filetime_getTimeFromRTC());
+	u16_to_u8array (dirEntry.entryData, DIR_ENTRY_mDate, _FAT_filetime_getDateFromRTC());
+	u16_to_u8array (dirEntry.entryData, DIR_ENTRY_aDate, _FAT_filetime_getDateFromRTC());
 	
 	// Set the directory attribute
 	dirEntry.entryData[DIR_ENTRY_attributes] = ATTRIB_DIR;
