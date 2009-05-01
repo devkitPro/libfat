@@ -20,7 +20,7 @@ BUILD		?=	release
 SOURCES		:=	../source
 INCLUDES	:=	../include
 DATA		:=
-LIB			:=	$(TOPDIR)/gba/lib
+LIB		:=	$(TOPDIR)/gba/lib
 
 #---------------------------------------------------------------------------------
 # options for code generation
@@ -121,7 +121,7 @@ clean:
 all: $(GBABIN)
 
 dist-bin:
-	@tar --exclude=*CVS* -cvjf $(TOPDIR)/distribute/$(VERSTRING)/libfat-gba-$(VERSTRING).tar.bz2 include lib
+	@tar --exclude=.svn --exclude=*CVS* -cvjf $(TOPDIR)/distribute/$(VERSTRING)/libfat-gba-$(VERSTRING).tar.bz2 include lib
 	
 install:
 	cp lib/libfat.a $(DEVKITPRO)/libgba/lib

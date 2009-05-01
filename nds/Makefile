@@ -100,7 +100,7 @@ clean:
 all: $(ARM9BIN)
 
 dist-bin:
-	@tar --exclude=*CVS* -cvjf $(TOPDIR)/distribute/$(VERSTRING)/libfat-nds-$(VERSTRING).tar.bz2 include lib
+	@tar --exclude=.svn --exclude=*CVS* -cvjf $(TOPDIR)/distribute/$(VERSTRING)/libfat-nds-$(VERSTRING).tar.bz2 include lib
 
 install:
 	cp lib/libfat.a $(DEVKITPRO)/libnds/lib
