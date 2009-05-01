@@ -463,12 +463,12 @@ int _FAT_statvfs_r (struct _reent *r, const char *path, struct statvfs *buf)
 	buf->f_bsize = partition->bytesPerCluster;		// File system block size. 
 	buf->f_frsize = partition->bytesPerCluster;	// Fundamental file system block size. 
 	
-	buf->f_blocks	= partition->fat.lastCluster - CLUSTER_FIRST; // Total number of blocks on file system in units of f_frsize. 
+	buf->f_blocks	= partition->fat.lastCluster - CLUSTER_FIRST + 1; // Total number of blocks on file system in units of f_frsize. 
 	buf->f_bfree = freeClusterCount;	// Total number of free blocks. 
 	buf->f_bavail	= freeClusterCount;	// Number of free blocks available to non-privileged process. 
 
 	// Treat requests for info on inodes as clusters
-	buf->f_files = partition->fat.lastCluster - CLUSTER_FIRST;	// Total number of file serial numbers. 
+	buf->f_files = partition->fat.lastCluster - CLUSTER_FIRST + 1;	// Total number of file serial numbers. 
 	buf->f_ffree = freeClusterCount;	// Total number of free file serial numbers. 
 	buf->f_favail = freeClusterCount;	// Number of file serial numbers available to non-privileged process. 
 	
