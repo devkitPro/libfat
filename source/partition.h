@@ -72,7 +72,7 @@ typedef struct {
 /*
 Mount the supplied device and return a pointer to the struct necessary to use it
 */
-PARTITION* _FAT_partition_constructor (const DISC_INTERFACE* disc, uint32_t cacheSize, sec_t startSector);
+PARTITION* _FAT_partition_constructor (const DISC_INTERFACE* disc, uint32_t cacheSize, uint32_t SectorsPerPage, sec_t startSector);
 
 /*
 Dismount the device and free all structures used. 

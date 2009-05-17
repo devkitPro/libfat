@@ -71,7 +71,7 @@ the disc. Otherwise it will try to mount the partition starting at startSector.
 cacheSize specifies the number of pages to allocate for the cache.
 This will not startup the disc, so you need to call interface->startup(); first.
 */
-extern bool fatMount (const char* name, const DISC_INTERFACE* interface, sec_t startSector, uint32_t cacheSize);
+extern bool fatMount (const char* name, const DISC_INTERFACE* interface, sec_t startSector, uint32_t cacheSize, uint32_t SectorsPerPage);
 
 /*
 Unmount the partition specified by name.

@@ -36,6 +36,7 @@
 #include <errno.h>
 #include <ctype.h>
 #include <unistd.h>
+#include <stdio.h>
 
 #include "cache.h"
 #include "file_allocation_table.h"
@@ -244,6 +245,10 @@ int _FAT_open_r (struct _reent *r, void *fileStruct, const char *path, int flags
 
 	_FAT_unlock(&partition->lock);
 
+	/*FILE *fp;
+	fp=__sfp(r);
+	fp->_file = (int) file;
+	setvbuf(fp,NULL,_IONBF,0);*/
 	return (int) file;
 }
 
@@ -335,6 +340,33 @@ int _FAT_close_r (struct _reent *r, int fd) {
 	return ret;
 }
 
+sec_t _FAT_Num_Sectors_To_Cache(CACHE* cache, FILE_POSITION position,PARTITION* partition) {
+	uint32_t limit;
+	uint32_t ra_start, ra_end, ra_sectors;
+
+
+	limit = cache->sectorsPerPage;
+
+	ra_start = position.cluster;
+	ra_sectors = - position.sector;
+
+	while (true) {
+		ra_end = ra_start;
+		ra_start = _FAT_fat_nextCluster(partition, ra_end);
+
+		if (ra_start != ra_end + 1)
+			break;
+
+		ra_sectors += partition->sectorsPerCluster;
+
+		if (ra_sectors >= limit)
+			break;
+	}
+	if (ra_sectors > limit) ra_sectors = limit;
+
+	return ra_sectors;
+
+}
 
 ssize_t _FAT_read_r (struct _reent *r, int fd, char *ptr, size_t len) {
 	FILE_STRUCT* file = (FILE_STRUCT*)  fd;
@@ -407,7 +439,7 @@ ssize_t _FAT_read_r (struct _reent *r, int fd, char *ptr, size_t len) {
 	}
 
 	if ((tempVar > 0) && flagNoError) {
-		if (! _FAT_disc_readSectors (partition->disc, _FAT_fat_clusterToSector (partition, position.cluster) + position.sector,
+		if (! _FAT_cache_getSectors (cache, _FAT_fat_clusterToSector (partition, position.cluster) + position.sector,
 			tempVar, ptr))
 		{
 			flagNoError = false;
@@ -450,7 +482,7 @@ ssize_t _FAT_read_r (struct _reent *r, int fd, char *ptr, size_t len) {
 #endif
 			(chunkSize + partition->bytesPerCluster <= remain));
 
-		if (!_FAT_disc_readSectors (partition->disc, _FAT_fat_clusterToSector (partition, position.cluster),
+		if (!_FAT_cache_getSectors (cache, _FAT_fat_clusterToSector (partition, position.cluster),
 				chunkSize / BYTES_PER_READ, ptr))
 		{
 			flagNoError = false;
@@ -476,7 +508,7 @@ ssize_t _FAT_read_r (struct _reent *r, int fd, char *ptr, size_t len) {
 	// Read remaining sectors
 	tempVar = remain / BYTES_PER_READ; // Number of sectors left
 	if ((tempVar > 0) && flagNoError) {
-		if (!_FAT_disc_readSectors (partition->disc, _FAT_fat_clusterToSector (partition, position.cluster),
+		if (!_FAT_cache_getSectors (cache, _FAT_fat_clusterToSector (partition, position.cluster),
 			tempVar, ptr))
 		{
 			flagNoError = false;

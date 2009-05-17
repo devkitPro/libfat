@@ -64,8 +64,7 @@ static const devoptab_t dotab_fat = {
 	NULL	/* Device data */
 };
 
-
-bool fatMount (const char* name, const DISC_INTERFACE* interface, sec_t startSector, uint32_t cacheSize) {
+bool fatMount (const char* name, const DISC_INTERFACE* interface, sec_t startSector, uint32_t cacheSize, uint32_t SectorsPerPage) {
 	PARTITION* partition;
 	devoptab_t* devops;
 	char* nameCopy;
@@ -78,7 +77,7 @@ bool fatMount (const char* name, const DISC_INTERFACE* interface, sec_t startSec
 	nameCopy = (char*)(devops+1);
 
 	// Initialize the file system
-	partition = _FAT_partition_constructor (interface, cacheSize, startSector);
+	partition = _FAT_partition_constructor (interface, cacheSize, SectorsPerPage, startSector);
 	if (!partition) {
 		_FAT_mem_free (devops);
 		return false;
@@ -96,7 +95,7 @@ bool fatMount (const char* name, const DISC_INTERFACE* interface, sec_t startSec
 }
 
 bool fatMountSimple (const char* name, const DISC_INTERFACE* interface) {
-	return fatMount (name, interface, 0, DEFAULT_CACHE_PAGES);
+	return fatMount (name, interface, 0, DEFAULT_CACHE_PAGES, DEFAULT_SECTORS_PAGE);
 }
 
 void fatUnmount (const char* name) {
@@ -132,7 +131,7 @@ bool fatInit (uint32_t cacheSize, bool setAsDefaultDevice) {
 		i++)
 	{
 		disc = _FAT_disc_interfaces[i].getInterface();
-		if (disc->startup() && fatMount (_FAT_disc_interfaces[i].name, disc, 0, cacheSize)) {
+		if (disc->startup() && fatMount (_FAT_disc_interfaces[i].name, disc, 0, cacheSize, DEFAULT_SECTORS_PAGE)) {
 			// The first device to successfully mount is set as the default
 			if (defaultDevice < 0) {
 				defaultDevice = i;

@@ -97,7 +97,7 @@ enum BPB {
 static const char FAT_SIG[3] = {'F', 'A', 'T'};
 
 
-PARTITION* _FAT_partition_constructor (const DISC_INTERFACE* disc, uint32_t cacheSize, sec_t startSector) {
+PARTITION* _FAT_partition_constructor (const DISC_INTERFACE* disc, uint32_t cacheSize, uint32_t sectorsPerPage, sec_t startSector) {
 	PARTITION* partition;
 	int i;
 	uint8_t sectorBuffer[BYTES_PER_READ] = {0};
@@ -220,7 +220,7 @@ PARTITION* _FAT_partition_constructor (const DISC_INTERFACE* disc, uint32_t cach
 	}
 
 	// Create a cache to use
-	partition->cache = _FAT_cache_constructor (cacheSize, partition->disc);
+	partition->cache = _FAT_cache_constructor (cacheSize, sectorsPerPage, partition->disc);
 
 	// Set current directory to the root
 	partition->cwdCluster = partition->rootDirCluster;
