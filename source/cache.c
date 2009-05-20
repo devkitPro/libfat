@@ -104,6 +104,7 @@ void _FAT_cache_destructor (CACHE* cache) {
 static u32 accessCounter = 0;
 
 static u32 accessTime(){
+	accessCounter++;
 	return accessCounter;
 }
 
@@ -166,7 +167,6 @@ bool _FAT_cache_getSectors (CACHE* cache, sec_t sector, sec_t numSectors, void* 
 
 	unsigned int oldUsed = 0;
 	unsigned int oldAccess = cacheEntries[0].last_access;
-	accessCounter++;
 
 	while(numSectors>0)
 	{
