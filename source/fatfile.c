@@ -850,6 +850,7 @@ ssize_t _FAT_write_r (struct _reent *r, int fd, const char *ptr, size_t len) {
 		}
 	}
 
+	_FAT_syncToDisc(file);
 	_FAT_unlock(&partition->lock);
 
 	return len;
