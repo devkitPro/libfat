@@ -522,6 +522,7 @@ static bool _FAT_file_extend_r (struct _reent *r, FILE_STRUCT* file) {
 	uint8_t zeroBuffer [BYTES_PER_READ] = {0};
 	uint32_t remain;
 	uint32_t tempNextCluster;
+	unsigned int sector;
 
 	position.byte = file->filesize % BYTES_PER_READ;
 	position.sector = (file->filesize % partition->bytesPerCluster) / BYTES_PER_READ;
@@ -571,8 +572,8 @@ static bool _FAT_file_extend_r (struct _reent *r, FILE_STRUCT* file) {
 				position.cluster = tempNextCluster;
 			}
 
-			_FAT_disc_writeSectors (partition->disc,
-				_FAT_fat_clusterToSector (partition, position.cluster) + position.sector, 1, zeroBuffer);
+			sector = _FAT_fat_clusterToSector (partition, position.cluster) + position.sector;
+			_FAT_cache_writeSectors (cache, sector, 1, zeroBuffer);
 
 			remain -= BYTES_PER_READ;
 			position.sector ++;
@@ -730,7 +731,7 @@ ssize_t _FAT_write_r (struct _reent *r, int fd, const char *ptr, size_t len) {
 	}
 
 	if ((tempVar > 0) && flagNoError) {
-		if (!_FAT_disc_writeSectors (partition->disc,
+		if (!_FAT_cache_writeSectors (cache,
 			_FAT_fat_clusterToSector (partition, position.cluster) + position.sector, tempVar, ptr))
 		{
 			flagNoError = false;
@@ -784,8 +785,8 @@ ssize_t _FAT_write_r (struct _reent *r, int fd, const char *ptr, size_t len) {
 #endif
 			(chunkSize + partition->bytesPerCluster <= remain));
 
-		if ( !_FAT_disc_writeSectors (partition->disc, _FAT_fat_clusterToSector(partition, position.cluster),
-			chunkSize / BYTES_PER_READ, ptr))
+		if ( !_FAT_cache_writeSectors (cache,
+				_FAT_fat_clusterToSector(partition, position.cluster), chunkSize / BYTES_PER_READ, ptr))
 		{
 			flagNoError = false;
 			r->_errno = EIO;
@@ -806,8 +807,7 @@ ssize_t _FAT_write_r (struct _reent *r, int fd, const char *ptr, size_t len) {
 	// Write remaining sectors
 	tempVar = remain / BYTES_PER_READ; // Number of sectors left
 	if ((tempVar > 0) && flagNoError) {
-		if (!_FAT_disc_writeSectors (partition->disc, _FAT_fat_clusterToSector (partition, position.cluster),
-			tempVar, ptr))
+		if (!_FAT_cache_writeSectors (cache, _FAT_fat_clusterToSector (partition, position.cluster), tempVar, ptr))
 		{
 			flagNoError = false;
 			r->_errno = EIO;
@@ -849,8 +849,6 @@ ssize_t _FAT_write_r (struct _reent *r, int fd, const char *ptr, size_t len) {
 			file->filesize = file->currentPosition;
 		}
 	}
-
-	_FAT_syncToDisc(file);
 	_FAT_unlock(&partition->lock);
 
 	return len;
