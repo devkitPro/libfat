@@ -108,35 +108,6 @@ static u32 accessTime(){
 	return accessCounter;
 }
 
-static void FlushAndInvalidateCachePage(CACHE* cache,unsigned int page) {
-	if(cache->cacheEntries[page].dirty == true) {
-		// Write the page back to disc
-		_FAT_disc_writeSectors (cache->disc, cache->cacheEntries[page].sector, cache->cacheEntries[page].count, cache->cacheEntries[page].cache);
-	}
-	//Invalidate
-	cache->cacheEntries[page].sector = CACHE_FREE;
-	cache->cacheEntries[page].last_access = 0;
-	cache->cacheEntries[page].count = 0;
-	cache->cacheEntries[page].dirty = false;
-
-}
-
-void InvalidateCachePagesSharingSectors(CACHE* cache, sec_t sector, sec_t numSectors, unsigned int valid_page) {
-	return;
-	unsigned int i;
-	if(cache==NULL)return;
-	CACHE_ENTRY* cacheEntries = cache->cacheEntries;
-	unsigned int numberOfPages = cache->numberOfPages;
-
-	for (i = 0; i < numberOfPages ; i++) {
-		if(i==valid_page) continue;
-		if ( ( cacheEntries[i].sector > sector+numSectors ) ||
-			 ( cacheEntries[i].sector+cacheEntries[i].count < sector ) ) continue;
-
-		FlushAndInvalidateCachePage(cache,i);
-    }
-}
-
 /*
 Retrieve a sector's page from the cache. If it is not found in the cache,
 load it into the cache and return the page it was loaded to.
@@ -173,7 +144,7 @@ static unsigned int _FAT_cache_getSector (CACHE* cache, sec_t sector, void* buff
 		}
 		cacheEntries[oldUsed].dirty = false;
 	}
-	InvalidateCachePagesSharingSectors(cache,sector,sectorsPerPage,oldUsed);
+
 	// Load the new sector into the cache
 	if (!_FAT_disc_readSectors (cache->disc, sector, sectorsPerPage, cacheEntries[oldUsed].cache)) {
 		return false;
@@ -234,7 +205,7 @@ bool _FAT_cache_getSectors (CACHE* cache, sec_t sector, sec_t numSectors, void* 
 
 		cacheEntries[oldUsed].sector = sector;
 		cacheEntries[oldUsed].count = cache->sectorsPerPage;
-		InvalidateCachePagesSharingSectors(cache,cacheEntries[oldUsed].sector,cacheEntries[oldUsed].count,oldUsed);
+
 		if (!_FAT_disc_readSectors (cache->disc, sector, cacheEntries[oldUsed].count,  cacheEntries[oldUsed].cache)) {
 			return false;
 		}
