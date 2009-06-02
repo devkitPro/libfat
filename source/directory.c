@@ -549,7 +549,7 @@ bool _FAT_directory_entryFromPath (PARTITION* partition, DIR_ENTRY* entry, const
 			// Check if the alias matches
 			_FAT_directory_entryGetAlias (entry->entryData, alias);
 			if ((dirnameLength == strnlen(alias, MAX_ALIAS_LENGTH))
-				&& (_FAT_directory_mbsncasecmp(pathPosition, alias, dirnameLength) == 0)) {
+				&& (strncasecmp(pathPosition, alias, dirnameLength) == 0)) {
 					found = true;
 			}
 
@@ -723,8 +723,7 @@ static bool _FAT_directory_entryExists (PARTITION* partition, const char* name, 
 
 		// Check if the alias matches
 		_FAT_directory_entryGetAlias (tempEntry.entryData, alias);
-		if ((dirnameLength == strnlen(alias, MAX_ALIAS_LENGTH))
-			&& (_FAT_directory_mbsncasecmp(name, alias, dirnameLength) == 0)) {
+		if ((strncasecmp(name, alias, MAX_ALIAS_LENGTH) == 0)) {
 				return true;
 		}
 		foundFile = _FAT_directory_getNextEntry (partition, &tempEntry);
@@ -926,6 +925,7 @@ bool _FAT_directory_addEntry (PARTITION* partition, DIR_ENTRY* entry, uint32_t d
 					memmove (alias + j, alias + i, strlen(alias) - i);
 					// Pad primary component
 					memset (alias + i, '_', j - i);
+					alias[MAX_ALIAS_LENGTH-1]=0;
 				}
 				
 				// Generate numeric tail
