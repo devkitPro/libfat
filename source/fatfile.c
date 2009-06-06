@@ -411,7 +411,7 @@ ssize_t _FAT_read_r (struct _reent *r, int fd, char *ptr, size_t len) {
 	}
 
 	if ((tempVar > 0) && flagNoError) {
-		if (! _FAT_cache_getSectors (cache, _FAT_fat_clusterToSector (partition, position.cluster) + position.sector,
+		if (! _FAT_cache_readSectors (cache, _FAT_fat_clusterToSector (partition, position.cluster) + position.sector,
 			tempVar, ptr))
 		{
 			flagNoError = false;
@@ -454,7 +454,7 @@ ssize_t _FAT_read_r (struct _reent *r, int fd, char *ptr, size_t len) {
 #endif
 			(chunkSize + partition->bytesPerCluster <= remain));
 
-		if (!_FAT_cache_getSectors (cache, _FAT_fat_clusterToSector (partition, position.cluster),
+		if (!_FAT_cache_readSectors (cache, _FAT_fat_clusterToSector (partition, position.cluster),
 				chunkSize / BYTES_PER_READ, ptr))
 		{
 			flagNoError = false;
@@ -480,7 +480,7 @@ ssize_t _FAT_read_r (struct _reent *r, int fd, char *ptr, size_t len) {
 	// Read remaining sectors
 	tempVar = remain / BYTES_PER_READ; // Number of sectors left
 	if ((tempVar > 0) && flagNoError) {
-		if (!_FAT_cache_getSectors (cache, _FAT_fat_clusterToSector (partition, position.cluster),
+		if (!_FAT_cache_readSectors (cache, _FAT_fat_clusterToSector (partition, position.cluster),
 			tempVar, ptr))
 		{
 			flagNoError = false;

@@ -93,7 +93,7 @@ bool _FAT_cache_eraseWritePartialSector (CACHE* cache, const void* buffer, sec_t
 /*
 Read several sectors from the cache
 */
-bool _FAT_cache_getSectors (CACHE* cache, sec_t sector, sec_t numSectors, void* buffer);
+bool _FAT_cache_readSectors (CACHE* cache, sec_t sector, sec_t numSectors, void* buffer);
 
 /*
 Read a full sector from the cache

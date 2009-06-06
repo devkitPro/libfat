@@ -101,151 +101,94 @@ void _FAT_cache_destructor (CACHE* cache) {
 	_FAT_mem_free (cache);
 }
 
+/*
 static u32 accessCounter = 0;
 
 static u32 accessTime(){
 	accessCounter++;
 	return accessCounter;
 }
-
-/*
-Retrieve a sector's page from the cache. If it is not found in the cache,
-load it into the cache and return the page it was loaded to.
-Return CACHE_FREE on error.
 */
-static unsigned int _FAT_cache_getSector (CACHE* cache, sec_t sector, void* buffer) {
+
+static CACHE_ENTRY* _FAT_cache_getPage(CACHE *cache,sec_t sector)
+{
 	unsigned int i;
 	CACHE_ENTRY* cacheEntries = cache->cacheEntries;
 	unsigned int numberOfPages = cache->numberOfPages;
 	unsigned int sectorsPerPage = cache->sectorsPerPage;
 
+	bool foundFree = false;
 	unsigned int oldUsed = 0;
-	unsigned int oldAccess = cacheEntries[0].last_access;
+	unsigned int oldAccess = UINT_MAX;
 
-	for (i = 0; i < numberOfPages ; i++) {
-		if ( sector>=cacheEntries[i].sector && sector < cacheEntries[i].sector+cacheEntries[i].count) {
-			cacheEntries[i].last_access = accessTime();
-			memcpy(buffer, cacheEntries[i].cache + ((sector - cacheEntries[i].sector)*BYTES_PER_READ), BYTES_PER_READ);
-			return true;
+	for(i=0;i<numberOfPages;i++) {
+		if(sector>=cacheEntries[i].sector && sector<(cacheEntries[i].sector + cacheEntries[i].count)) {
+			cacheEntries[i].last_access++;
+			return &(cacheEntries[i]);
 		}
-		// While searching for the desired sector, also search for the least recently used page
-		if ( (cacheEntries[i].sector == CACHE_FREE) || (cacheEntries[i].last_access < oldAccess) ) {
+
+		if(foundFree==false && (cacheEntries[i].sector==CACHE_FREE || cacheEntries[i].last_access<oldAccess)) {
+			if(cacheEntries[i].sector==CACHE_FREE) foundFree = true;
 			oldUsed = i;
 			oldAccess = cacheEntries[i].last_access;
 		}
 	}
 
-
-	// If it didn't, replace the least used cache page with the desired sector
-	if ((cacheEntries[oldUsed].sector != CACHE_FREE) && (cacheEntries[oldUsed].dirty == true)) {
-		// Write the page back to disc if it has been written to
-		if (!_FAT_disc_writeSectors (cache->disc, cacheEntries[oldUsed].sector, cacheEntries[oldUsed].count, cacheEntries[oldUsed].cache)) {
-			return false;
-		}
+	if(foundFree==false && cacheEntries[oldUsed].dirty==true) {
+		if(!_FAT_disc_writeSectors(cache->disc,cacheEntries[oldUsed].sector,cacheEntries[oldUsed].count,cacheEntries[oldUsed].cache)) return NULL;
 		cacheEntries[oldUsed].dirty = false;
 	}
 
-	// Load the new sector into the cache
-	if (!_FAT_disc_readSectors (cache->disc, sector, sectorsPerPage, cacheEntries[oldUsed].cache)) {
-		return false;
-	}
+	if(!_FAT_disc_readSectors(cache->disc,sector,sectorsPerPage,cacheEntries[oldUsed].cache)) return NULL;
+
 	cacheEntries[oldUsed].sector = sector;
 	cacheEntries[oldUsed].count = sectorsPerPage;
-	// Increment the usage count, don't reset it
-	// This creates a paging policy of least recently used PAGE, not sector
-	cacheEntries[oldUsed].last_access = accessTime();
-	memcpy(buffer, cacheEntries[oldUsed].cache, BYTES_PER_READ);
-	return true;
+	cacheEntries[oldUsed].last_access++;
+
+	return &(cacheEntries[oldUsed]);
 }
 
-bool _FAT_cache_getSectors (CACHE* cache, sec_t sector, sec_t numSectors, void* buffer) {
-	unsigned int i;
-	CACHE_ENTRY* cacheEntries = cache->cacheEntries;
-	unsigned int numberOfPages = cache->numberOfPages;
+bool _FAT_cache_readSectors(CACHE *cache,sec_t sector,sec_t numSectors,void *buffer)
+{
 	sec_t sec;
 	sec_t secs_to_read;
+	CACHE_ENTRY *entry;
+	uint8_t *dest = buffer;
 
-	unsigned int oldUsed = 0;
-	unsigned int oldAccess = cacheEntries[0].last_access;
+	while(numSectors>0) {
+		entry = _FAT_cache_getPage(cache,sector);
+		if(entry==NULL) return false;
 
-	while(numSectors>0)
-	{
-		i=0;
-		while (i < numberOfPages ) {
-			if ( sector>=cacheEntries[i].sector && sector < cacheEntries[i].sector+cacheEntries[i].count) {
-				sec=sector-cacheEntries[i].sector;
-				secs_to_read=cacheEntries[i].count-sec;
-				if(secs_to_read>numSectors)secs_to_read=numSectors;
-				memcpy(buffer,cacheEntries[i].cache + (sec*BYTES_PER_READ), secs_to_read*BYTES_PER_READ);
-				cacheEntries[i].last_access = accessTime();
-				numSectors=numSectors-secs_to_read;
-				if(numSectors==0) return true;
-				buffer+=secs_to_read*BYTES_PER_READ;
-				sector+=secs_to_read;
-				i=-1; // recheck all pages again
-				oldUsed = 0;
-				oldAccess = cacheEntries[0].last_access;
+		sec = sector - entry->sector;
+		secs_to_read = entry->count - sec;
+		if(secs_to_read>numSectors) secs_to_read = numSectors;
 
-			}
-			else // While searching for the desired sector, also search for the least recently used page
-			if ( (cacheEntries[i].sector == CACHE_FREE) || (cacheEntries[i].last_access < oldAccess) ) {
-				oldUsed = i;
-				oldAccess = cacheEntries[i].last_access;
-			}
-			i++;
-	    }
-		// If it didn't, replace the least recently used cache page with the desired sector
-		if ((cacheEntries[oldUsed].sector != CACHE_FREE) && (cacheEntries[oldUsed].dirty == true)) {
-			// Write the page back to disc if it has been written to
-			if (!_FAT_disc_writeSectors (cache->disc, cacheEntries[oldUsed].sector, cacheEntries[oldUsed].count, cacheEntries[oldUsed].cache)) {
-				return false;
-			}
-			cacheEntries[oldUsed].dirty = false;
-		}
+		memcpy(dest,entry->cache + (sec*BYTES_PER_READ),(secs_to_read*BYTES_PER_READ));
 
-		cacheEntries[oldUsed].sector = sector;
-		cacheEntries[oldUsed].count = cache->sectorsPerPage;
-
-		if (!_FAT_disc_readSectors (cache->disc, sector, cacheEntries[oldUsed].count,  cacheEntries[oldUsed].cache)) {
-			return false;
-		}
-
-		// Increment the usage count, don't reset it
-		// This creates a paging policy of least used PAGE, not sector
-		cacheEntries[oldUsed].last_access = accessTime();
-
-		sec=0;
-		secs_to_read=cacheEntries[oldUsed].count-sec;
-		if(secs_to_read>numSectors)secs_to_read=numSectors;
-		memcpy(buffer,cacheEntries[oldUsed].cache + (sec*BYTES_PER_READ), secs_to_read*BYTES_PER_READ);
-		numSectors=numSectors-secs_to_read;
-		if(numSectors==0) return true;
-		buffer+=secs_to_read*BYTES_PER_READ;
-
-		sector+=secs_to_read;
-		oldUsed = 0;
-		oldAccess = cacheEntries[0].last_access;
+		dest += (secs_to_read*BYTES_PER_READ);
+		sector += secs_to_read;
+		numSectors -= secs_to_read;
 	}
-	return false;
+
+	return true;
 }
 
 /*
 Reads some data from a cache page, determined by the sector number
 */
-bool _FAT_cache_readPartialSector (CACHE* cache, void* buffer, sec_t sector, unsigned int offset, size_t size) {
-	void* sec;
+bool _FAT_cache_readPartialSector (CACHE* cache, void* buffer, sec_t sector, unsigned int offset, size_t size) 
+{
+	sec_t sec;
+	CACHE_ENTRY *entry;
 
-	if (offset + size > BYTES_PER_READ) {
-		return false;
-	}
-	sec = (void*) _FAT_mem_align ( BYTES_PER_READ );
-	if(sec == NULL) return false;
-	if(! _FAT_cache_getSector(cache, sector, sec) ) {
-		_FAT_mem_free(sec);
-		return false;
-	}
-	memcpy(buffer, sec + offset, size);
-	_FAT_mem_free(sec);
+	if (offset + size > BYTES_PER_READ) return false;
+
+	entry = _FAT_cache_getPage(cache,sector);
+	if(entry==NULL) return false;
+
+	sec = sector - entry->sector;
+	memcpy(buffer,entry->cache + ((sec*BYTES_PER_READ) + offset),size);
+
 	return true;
 }
 
@@ -265,35 +208,21 @@ bool _FAT_cache_readLittleEndianValue (CACHE* cache, uint32_t *value, sec_t sect
 /*
 Writes some data to a cache page, making sure it is loaded into memory first.
 */
-bool _FAT_cache_writePartialSector (CACHE* cache, const void* buffer, sec_t sector, unsigned int offset, size_t size) {
-	unsigned int i;
-	void* sec;
-	CACHE_ENTRY* cacheEntries = cache->cacheEntries;
-	unsigned int numberOfPages = cache->numberOfPages;
+bool _FAT_cache_writePartialSector (CACHE* cache, const void* buffer, sec_t sector, unsigned int offset, size_t size) 
+{
+	sec_t sec;
+	CACHE_ENTRY *entry;
 
-	if (offset + size > BYTES_PER_READ) {
-		return false;
-	}
+	if (offset + size > BYTES_PER_READ) return false;
 
-	//To be sure sector is in cache
-	sec = (void*) _FAT_mem_align ( BYTES_PER_READ );
-	if(sec == NULL) return false;
-	if(! _FAT_cache_getSector(cache, sector, sec) ) {
-		_FAT_mem_free(sec);
-		return false;
-	}
-	_FAT_mem_free(sec);
+	entry = _FAT_cache_getPage(cache,sector);
+	if(entry==NULL) return false;
 
-	//Find where sector is and write
-	for (i = 0; i < numberOfPages ; i++) {
-		if ( sector>=cacheEntries[i].sector && sector < cacheEntries[i].sector+cacheEntries[i].count) {
-			cacheEntries[i].last_access = accessTime();
-			memcpy (cacheEntries[i].cache + ((sector-cacheEntries[i].sector)*BYTES_PER_READ) + offset, buffer, size);
-			cache->cacheEntries[i].dirty = true;
-			return true;
-	    }
-	}
-	return false;
+	sec = sector - entry->sector;
+	memcpy(entry->cache + ((sec*BYTES_PER_READ) + offset),buffer,size);
+
+	entry->dirty = true;
+	return true;
 }
 
 bool _FAT_cache_writeLittleEndianValue (CACHE* cache, const uint32_t value, sec_t sector, unsigned int offset, int size) {
@@ -312,105 +241,49 @@ bool _FAT_cache_writeLittleEndianValue (CACHE* cache, const uint32_t value, sec_
 /*
 Writes some data to a cache page, zeroing out the page first
 */
-bool _FAT_cache_eraseWritePartialSector (CACHE* cache, const void* buffer, sec_t sector, unsigned int offset, size_t size) {
-	unsigned int i;
-	void* sec;
-	CACHE_ENTRY* cacheEntries = cache->cacheEntries;
-	unsigned int numberOfPages = cache->numberOfPages;
+bool _FAT_cache_eraseWritePartialSector (CACHE* cache, const void* buffer, sec_t sector, unsigned int offset, size_t size) 
+{
+	sec_t sec;
+	CACHE_ENTRY *entry;
 
-	if (offset + size > BYTES_PER_READ) {
-		return false;
-	}
+	if (offset + size > BYTES_PER_READ) return false;
 
-	//To be sure sector is in cache
-	sec = (void*) _FAT_mem_align ( BYTES_PER_READ );
-	if(sec == NULL) return false;
-	if(! _FAT_cache_getSector(cache, sector, sec) ) {
-		_FAT_mem_free(sec);
-		return false;
-	}
-	_FAT_mem_free(sec);
+	entry = _FAT_cache_getPage(cache,sector);
+	if(entry==NULL) return false;
 
-	//Find where sector is and write
-	for (i = 0; i < numberOfPages ; i++) {
-		if ( sector>=cacheEntries[i].sector && sector < cacheEntries[i].sector+cacheEntries[i].count) {
-			cacheEntries[i].last_access = accessTime();
-			memset (cacheEntries[i].cache + ((sector-cacheEntries[i].sector)*BYTES_PER_READ), 0, BYTES_PER_READ);
-			memcpy (cacheEntries[i].cache + ((sector-cacheEntries[i].sector)*BYTES_PER_READ) + offset, buffer, size);
-			cache->cacheEntries[i].dirty = true;
-			return true;
-	    }
-	}
-	return false;
+	sec = sector - entry->sector;
+	memset(entry->cache + (sec*BYTES_PER_READ),0,BYTES_PER_READ);
+	memcpy(entry->cache + ((sec*BYTES_PER_READ) + offset),buffer,size);
+
+	entry->dirty = true;
+	return true;
 }
 
-bool _FAT_cache_writeSectors (CACHE* cache, sec_t sector, sec_t numSectors, const void* buffer) {
-	unsigned int i;
-	CACHE_ENTRY* cacheEntries = cache->cacheEntries;
-	unsigned int numberOfPages = cache->numberOfPages;
+bool _FAT_cache_writeSectors (CACHE* cache, sec_t sector, sec_t numSectors, const void* buffer) 
+{
 	sec_t sec;
 	sec_t secs_to_write;
-
-	unsigned int oldUsed = 0;
-	unsigned int oldAccess = cacheEntries[0].last_access;
+	CACHE_ENTRY* entry;
+	const uint8_t *src = buffer;
 
 	while(numSectors>0)
 	{
-		i=0;
-		while (i < numberOfPages ) {
-			if ( (sector>=cacheEntries[i].sector && sector < cacheEntries[i].sector+cacheEntries[i].count) ||
-				 (sector == cacheEntries[i].sector+cacheEntries[i].count && cacheEntries[i].count < cache->sectorsPerPage)) {
-				sec=sector-cacheEntries[i].sector;
-				secs_to_write=cache->sectorsPerPage-sec;
-				if(secs_to_write>numSectors)secs_to_write=numSectors;
-				memcpy(cacheEntries[i].cache + (sec*BYTES_PER_READ), buffer, secs_to_write*BYTES_PER_READ);
-				cacheEntries[i].last_access = accessTime();
-				cacheEntries[i].dirty = true;
-				cacheEntries[i].count = sec + secs_to_write;
-				numSectors=numSectors-secs_to_write;
-				if(numSectors==0) return true;
-				buffer+=secs_to_write*BYTES_PER_READ;
-				sector+=secs_to_write;
-				i=-1; // recheck all pages again
-				oldUsed = 0;
-				oldAccess = cacheEntries[0].last_access;
+		entry = _FAT_cache_getPage(cache,sector);
+		if(entry==NULL) return false;
 
-			}
-			else // While searching for the desired sector, also search for the least recently used page
-			if ( (cacheEntries[i].sector == CACHE_FREE) || (cacheEntries[i].last_access < oldAccess) ) {
-				oldUsed = i;
-				oldAccess = cacheEntries[i].last_access;
-			}
-			i++;
-	    }
-		// If it didn't, replace the least recently used cache page with the desired sector
-		if ((cacheEntries[oldUsed].sector != CACHE_FREE) && (cacheEntries[oldUsed].dirty == true)) {
-			// Write the page back to disc if it has been written to
-			if (!_FAT_disc_writeSectors (cache->disc, cacheEntries[oldUsed].sector, cacheEntries[oldUsed].count, cacheEntries[oldUsed].cache)) {
-				return false;
-			}
-			cacheEntries[oldUsed].dirty = false;
-		}
+		sec = sector - entry->sector;
+		secs_to_write = entry->count - sec;
+		if(secs_to_write>numSectors) secs_to_write = numSectors;
 
-		secs_to_write=numSectors;
-		if(secs_to_write>cache->sectorsPerPage)secs_to_write=cache->sectorsPerPage;
-		cacheEntries[oldUsed].sector = sector;
-		cacheEntries[oldUsed].count = secs_to_write;
+		memcpy(entry->cache + (sec*BYTES_PER_READ),src,(secs_to_write*BYTES_PER_READ));
 
-		memcpy(cacheEntries[oldUsed].cache, buffer, secs_to_write*BYTES_PER_READ);
-		buffer+=secs_to_write*BYTES_PER_READ;
-		sector+=secs_to_write;
-		numSectors=numSectors-secs_to_write;
+		src += (secs_to_write*BYTES_PER_READ);
+		sector += secs_to_write;
+		numSectors -= secs_to_write;
 
-		// Increment the usage count, don't reset it
-		// This creates a paging policy of least used PAGE, not sector
-		cacheEntries[oldUsed].last_access = accessTime();
-		cacheEntries[oldUsed].dirty = true;
-		if(numSectors==0) return true;
-		oldUsed = 0;
-		oldAccess = cacheEntries[0].last_access;
+		entry->dirty = true;
 	}
-	return false;
+	return true;
 }
 
 /*
