@@ -139,6 +139,7 @@ static CACHE_ENTRY* _FAT_cache_getPage(CACHE *cache,sec_t sector)
 		cacheEntries[oldUsed].dirty = false;
 	}
 
+	sector = (sector/sectorsPerPage)*sectorsPerPage;
 	if(!_FAT_disc_readSectors(cache->disc,sector,sectorsPerPage,cacheEntries[oldUsed].cache)) return NULL;
 
 	cacheEntries[oldUsed].sector = sector;
