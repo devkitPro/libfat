@@ -46,7 +46,7 @@
 
 #define CACHE_FREE UINT_MAX
 
-CACHE* _FAT_cache_constructor (unsigned int numberOfPages, unsigned int sectorsPerPage, const DISC_INTERFACE* discInterface) {
+CACHE* _FAT_cache_constructor (unsigned int numberOfPages, unsigned int sectorsPerPage, const DISC_INTERFACE* discInterface, sec_t endOfPartition) {
 	CACHE* cache;
 	unsigned int i;
 	CACHE_ENTRY* cacheEntries;
@@ -65,6 +65,7 @@ CACHE* _FAT_cache_constructor (unsigned int numberOfPages, unsigned int sectorsP
 	}
 
 	cache->disc = discInterface;
+	cache->endOfPartition = endOfPartition;
 	cache->numberOfPages = numberOfPages;
 	cache->sectorsPerPage = sectorsPerPage;
 
@@ -126,7 +127,7 @@ static CACHE_ENTRY* _FAT_cache_getPage(CACHE *cache,sec_t sector)
 			cacheEntries[i].last_access = accessTime();
 			return &(cacheEntries[i]);
 		}
-
+		
 		if(foundFree==false && (cacheEntries[i].sector==CACHE_FREE || cacheEntries[i].last_access<oldAccess)) {
 			if(cacheEntries[i].sector==CACHE_FREE) foundFree = true;
 			oldUsed = i;
@@ -139,11 +140,14 @@ static CACHE_ENTRY* _FAT_cache_getPage(CACHE *cache,sec_t sector)
 		cacheEntries[oldUsed].dirty = false;
 	}
 
-	sector = (sector/sectorsPerPage)*sectorsPerPage;
-	if(!_FAT_disc_readSectors(cache->disc,sector,sectorsPerPage,cacheEntries[oldUsed].cache)) return NULL;
+	sector = (sector/sectorsPerPage)*sectorsPerPage; // align base sector to page size
+	sec_t next_page = sector + sectorsPerPage;
+	if(next_page > cache->endOfPartition)	next_page = cache->endOfPartition;
+
+	if(!_FAT_disc_readSectors(cache->disc,sector,next_page-sector,cacheEntries[oldUsed].cache)) return NULL;
 
 	cacheEntries[oldUsed].sector = sector;
-	cacheEntries[oldUsed].count = sectorsPerPage;
+	cacheEntries[oldUsed].count = next_page-sector;
 	cacheEntries[oldUsed].last_access = accessTime();
 
 	return &(cacheEntries[oldUsed]);

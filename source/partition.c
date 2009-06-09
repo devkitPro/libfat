@@ -220,7 +220,7 @@ PARTITION* _FAT_partition_constructor (const DISC_INTERFACE* disc, uint32_t cach
 	}
 
 	// Create a cache to use
-	partition->cache = _FAT_cache_constructor (cacheSize, sectorsPerPage, partition->disc);
+	partition->cache = _FAT_cache_constructor (cacheSize, sectorsPerPage, partition->disc, startSector+partition->numberOfSectors);
 
 	// Set current directory to the root
 	partition->cwdCluster = partition->rootDirCluster;
