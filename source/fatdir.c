@@ -427,6 +427,11 @@ int _FAT_mkdir_r (struct _reent *r, const char *path, int mode) {
 	
 	
 	// Create the double dot entry within the directory
+
+	// if ParentDir == Rootdir then ".."" always link to Cluster 0
+	if(parentCluster == partition->rootDirCluster)
+		parentCluster = FAT16_ROOT_DIR_CLUSTER;
+
 	newEntryData[DIR_ENTRY_name + 1] = '.';
 	u16_to_u8array (newEntryData, DIR_ENTRY_cluster, parentCluster);
 	u16_to_u8array (newEntryData, DIR_ENTRY_clusterHigh, parentCluster >> 16);
