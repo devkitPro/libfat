@@ -316,10 +316,12 @@ int _FAT_close_r (struct _reent *r, int fd) {
 
 	_FAT_lock(&file->partition->lock);
 
-	ret = _FAT_syncToDisc (file);
-	if (ret != 0) {
-		r->_errno = ret;
-		ret = -1;
+	if (file->write) {
+		ret = _FAT_syncToDisc (file);
+		if (ret != 0) {
+			r->_errno = ret;
+			ret = -1;
+		}
 	}
 
 	file->inUse = false;
