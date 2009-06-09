@@ -101,14 +101,14 @@ void _FAT_cache_destructor (CACHE* cache) {
 	_FAT_mem_free (cache);
 }
 
-/*
+
 static u32 accessCounter = 0;
 
 static u32 accessTime(){
 	accessCounter++;
 	return accessCounter;
 }
-*/
+
 
 static CACHE_ENTRY* _FAT_cache_getPage(CACHE *cache,sec_t sector)
 {
@@ -123,7 +123,7 @@ static CACHE_ENTRY* _FAT_cache_getPage(CACHE *cache,sec_t sector)
 
 	for(i=0;i<numberOfPages;i++) {
 		if(sector>=cacheEntries[i].sector && sector<(cacheEntries[i].sector + cacheEntries[i].count)) {
-			cacheEntries[i].last_access++;
+			cacheEntries[i].last_access = accessTime();
 			return &(cacheEntries[i]);
 		}
 
@@ -144,7 +144,7 @@ static CACHE_ENTRY* _FAT_cache_getPage(CACHE *cache,sec_t sector)
 
 	cacheEntries[oldUsed].sector = sector;
 	cacheEntries[oldUsed].count = sectorsPerPage;
-	cacheEntries[oldUsed].last_access++;
+	cacheEntries[oldUsed].last_access = accessTime();
 
 	return &(cacheEntries[oldUsed]);
 }
