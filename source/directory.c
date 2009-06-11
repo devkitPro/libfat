@@ -71,13 +71,13 @@ enum LFN_offset {
 	LFN_offset_char11 = 0x1C,
 	LFN_offset_char12 = 0x1E
 };
-const int LFN_offset_table[13]={0x01,0x03,0x05,0x07,0x09,0x0E,0x10,0x12,0x14,0x16,0x18,0x1C,0x1E}; 
+static const int LFN_offset_table[13]={0x01,0x03,0x05,0x07,0x09,0x0E,0x10,0x12,0x14,0x16,0x18,0x1C,0x1E}; 
 
 #define LFN_END 0x40
 #define LFN_DEL 0x80
 
-const char ILLEGAL_ALIAS_CHARACTERS[] = "\\/:;*?\"<>|&+,=[] ";
-const char ILLEGAL_LFN_CHARACTERS[] = "\\/:*?\"<>|";
+static const char ILLEGAL_ALIAS_CHARACTERS[] = "\\/:;*?\"<>|&+,=[] ";
+static const char ILLEGAL_LFN_CHARACTERS[] = "\\/:*?\"<>|";
 
 /* 
 Returns number of UCS-2 characters needed to encode an LFN
