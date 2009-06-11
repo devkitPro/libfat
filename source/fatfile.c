@@ -245,10 +245,6 @@ int _FAT_open_r (struct _reent *r, void *fileStruct, const char *path, int flags
 
 	_FAT_unlock(&partition->lock);
 
-	/*FILE *fp;
-	fp=__sfp(r);
-	fp->_file = (int) file;
-	setvbuf(fp,NULL,_IONBF,0);*/
 	return (int) file;
 }
 
