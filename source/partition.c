@@ -27,7 +27,6 @@
  EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-
 #include "partition.h"
 #include "bit_ops.h"
 #include "file_allocation_table.h"
