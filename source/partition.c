@@ -96,9 +96,67 @@ enum BPB {
 static const char FAT_SIG[3] = {'F', 'A', 'T'};
 
 
+sec_t FindFirstValidPartition(const DISC_INTERFACE* disc)
+{
+	uint8_t part_table[16*4];
+	uint8_t *ptr;
+	int i;
+
+	uint8_t sectorBuffer[BYTES_PER_READ] = {0};
+
+	// Read first sector of disc
+	if (!_FAT_disc_readSectors (disc, 0, 1, sectorBuffer)) {
+		return 0;
+	}
+
+	memcpy(part_table,sectorBuffer+0x1BE,16*4);
+	ptr = part_table;
+
+	for(i=0;i<4;i++,ptr+=16) {
+		sec_t part_lba = u8array_to_u32(ptr, 0x8);
+
+		if (!memcmp(sectorBuffer + BPB_FAT16_fileSysType, FAT_SIG, sizeof(FAT_SIG)) ||
+			!memcmp(sectorBuffer + BPB_FAT32_fileSysType, FAT_SIG, sizeof(FAT_SIG))) {
+			return part_lba;
+		}
+
+		if(ptr[4]==0) continue;
+
+		if(ptr[4]==0x0F) {
+			sec_t part_lba2=part_lba;
+			sec_t next_lba2=0;
+			int n;
+
+			for(n=0;n<8;n++) // max 8 logic partitions
+			{
+				if(!_FAT_disc_readSectors (disc, part_lba+next_lba2, 1, sectorBuffer)) return 0;
+
+				part_lba2 = part_lba + next_lba2 + u8array_to_u32(sectorBuffer, 0x1C6) ;
+				next_lba2 = u8array_to_u32(sectorBuffer, 0x1D6);
+
+				if(!_FAT_disc_readSectors (disc, part_lba2, 1, sectorBuffer)) return 0;
+
+				if (!memcmp(sectorBuffer + BPB_FAT16_fileSysType, FAT_SIG, sizeof(FAT_SIG)) ||
+					!memcmp(sectorBuffer + BPB_FAT32_fileSysType, FAT_SIG, sizeof(FAT_SIG)))
+				{
+					return part_lba2;
+				}
+
+				if(next_lba2==0) break;
+			}
+		} else {
+			if(!_FAT_disc_readSectors (disc, part_lba, 1, sectorBuffer)) return 0;
+			if (!memcmp(sectorBuffer + BPB_FAT16_fileSysType, FAT_SIG, sizeof(FAT_SIG)) ||
+				!memcmp(sectorBuffer + BPB_FAT32_fileSysType, FAT_SIG, sizeof(FAT_SIG))) {
+				return part_lba;
+			}
+		}
+	}
+	return 0;
+}
+
 PARTITION* _FAT_partition_constructor (const DISC_INTERFACE* disc, uint32_t cacheSize, uint32_t sectorsPerPage, sec_t startSector) {
 	PARTITION* partition;
-	int i;
 	uint8_t sectorBuffer[BYTES_PER_READ] = {0};
 
 	// Read first sector of disc
@@ -120,29 +178,9 @@ PARTITION* _FAT_partition_constructor (const DISC_INTERFACE* disc, uint32_t cach
 		// Check for FAT32
 		startSector = 0;
 	} else {
-		// This is an MBR
-		// Find first valid partition from MBR
-		// First check for an active partition
-		for (i=0x1BE; (i < 0x1FE) && (sectorBuffer[i] != 0x80); i+= 0x10);
-		// If it didn't find an active partition, search for any valid partition
-		if (i == 0x1FE) {
-			for (i=0x1BE; (i < 0x1FE) && (sectorBuffer[i+0x04] == 0x00); i+= 0x10);
-		}
-
-		if ( i != 0x1FE) {
-			// Go to first valid partition
-			startSector = u8array_to_u32(sectorBuffer, 0x8 + i);
-			// Load the BPB
-			if (!_FAT_disc_readSectors (disc, startSector, 1, sectorBuffer)) {
-					return NULL;
-			}
-			// Make sure it is a valid BPB
-			if ( (sectorBuffer[BPB_bootSig_55] != 0x55) || (sectorBuffer[BPB_bootSig_AA] != 0xAA)) {
-				return NULL;
-			}
-		} else {
-			// No partition found, assume this is a MBR free disk
-			startSector = 0;
+		startSector = FindFirstValidPartition(disc);
+		if (!_FAT_disc_readSectors (disc, startSector, 1, sectorBuffer)) {
+			return NULL;
 		}
 	}
 
