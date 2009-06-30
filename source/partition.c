@@ -4,7 +4,7 @@
  on various block devices.
 
  Copyright (c) 2006 Michael "Chishm" Chisholm
-	
+
  Redistribution and use in source and binary forms, with or without modification,
  are permitted provided that the following conditions are met:
 
@@ -38,7 +38,7 @@
 #include <ctype.h>
 #include <sys/iosupport.h>
 
-/* 
+/*
 This device name, as known by devkitPro toolchains
 */
 const char* DEVICE_NAME = "fat";
@@ -128,7 +128,7 @@ PARTITION* _FAT_partition_constructor (const DISC_INTERFACE* disc, uint32_t cach
 		if (i == 0x1FE) {
 			for (i=0x1BE; (i < 0x1FE) && (sectorBuffer[i+0x04] == 0x00); i+= 0x10);
 		}
-		
+
 		if ( i != 0x1FE) {
 			// Go to first valid partition
 			startSector = u8array_to_u32(sectorBuffer, 0x8 + i);
@@ -147,7 +147,7 @@ PARTITION* _FAT_partition_constructor (const DISC_INTERFACE* disc, uint32_t cach
 	}
 
 	// Now verify that this is indeed a FAT partition
-	if (memcmp(sectorBuffer + BPB_FAT16_fileSysType, FAT_SIG, sizeof(FAT_SIG)) && 
+	if (memcmp(sectorBuffer + BPB_FAT16_fileSysType, FAT_SIG, sizeof(FAT_SIG)) &&
 		memcmp(sectorBuffer + BPB_FAT32_fileSysType, FAT_SIG, sizeof(FAT_SIG)))
 	{
 		return NULL;
@@ -167,28 +167,28 @@ PARTITION* _FAT_partition_constructor (const DISC_INTERFACE* disc, uint32_t cach
 
 	// Init the partition lock
 	_FAT_lock_init(&partition->lock);
-	
+
 	// Set partition's disc interface
 	partition->disc = disc;
 
 	// Store required information about the file system
 	partition->fat.sectorsPerFat = u8array_to_u16(sectorBuffer, BPB_sectorsPerFAT);
 	if (partition->fat.sectorsPerFat == 0) {
-		partition->fat.sectorsPerFat = u8array_to_u32( sectorBuffer, BPB_FAT32_sectorsPerFAT32); 
+		partition->fat.sectorsPerFat = u8array_to_u32( sectorBuffer, BPB_FAT32_sectorsPerFAT32);
 	}
 
-	partition->numberOfSectors = u8array_to_u16( sectorBuffer, BPB_numSectorsSmall); 
+	partition->numberOfSectors = u8array_to_u16( sectorBuffer, BPB_numSectorsSmall);
 	if (partition->numberOfSectors == 0) {
-		partition->numberOfSectors = u8array_to_u32( sectorBuffer, BPB_numSectors);	
+		partition->numberOfSectors = u8array_to_u32( sectorBuffer, BPB_numSectors);
 	}
 
 	partition->bytesPerSector = BYTES_PER_READ;	// Sector size is redefined to be 512 bytes
 	partition->sectorsPerCluster = sectorBuffer[BPB_sectorsPerCluster] * u8array_to_u16(sectorBuffer, BPB_bytesPerSector) / BYTES_PER_READ;
 	partition->bytesPerCluster = partition->bytesPerSector * partition->sectorsPerCluster;
-	partition->fat.fatStart = startSector + u8array_to_u16(sectorBuffer, BPB_reservedSectors); 
+	partition->fat.fatStart = startSector + u8array_to_u16(sectorBuffer, BPB_reservedSectors);
 
 	partition->rootDirStart = partition->fat.fatStart + (sectorBuffer[BPB_numFATs] * partition->fat.sectorsPerFat);
-	partition->dataStart = partition->rootDirStart + 
+	partition->dataStart = partition->rootDirStart +
 		(( u8array_to_u16(sectorBuffer, BPB_rootEntries) * DIR_ENTRY_DATA_SIZE) / partition->bytesPerSector);
 
 	partition->totalSize = ((uint64_t)partition->numberOfSectors - (partition->dataStart - startSector)) * (uint64_t)partition->bytesPerSector;
@@ -210,7 +210,7 @@ PARTITION* _FAT_partition_constructor (const DISC_INTERFACE* disc, uint32_t cach
 		partition->rootDirCluster = FAT16_ROOT_DIR_CLUSTER;
 	} else {
 		// Set up for the FAT32 way
-		partition->rootDirCluster = u8array_to_u32(sectorBuffer, BPB_FAT32_rootClus); 
+		partition->rootDirCluster = u8array_to_u32(sectorBuffer, BPB_FAT32_rootClus);
 		// Check if FAT mirroring is enabled
 		if (!(sectorBuffer[BPB_FAT32_extFlags] & 0x80)) {
 			// Use the active FAT
@@ -223,10 +223,10 @@ PARTITION* _FAT_partition_constructor (const DISC_INTERFACE* disc, uint32_t cach
 
 	// Set current directory to the root
 	partition->cwdCluster = partition->rootDirCluster;
-	
+
 	// Check if this disc is writable, and set the readOnly property appropriately
 	partition->readOnly = !(_FAT_disc_features(disc) & FEATURE_MEDIUM_CANWRITE);
-	
+
 	// There are currently no open files on this partition
 	partition->openFileCount = 0;
 	partition->firstOpenFile = NULL;
@@ -236,7 +236,7 @@ PARTITION* _FAT_partition_constructor (const DISC_INTERFACE* disc, uint32_t cach
 
 void _FAT_partition_destructor (PARTITION* partition) {
 	FILE_STRUCT* nextFile;
-	
+
 	_FAT_lock(&partition->lock);
 
 	// Synchronize open files
@@ -245,27 +245,26 @@ void _FAT_partition_destructor (PARTITION* partition) {
 		_FAT_syncToDisc (nextFile);
 		nextFile = nextFile->nextOpenFile;
 	}
-	
+
 	// Free memory used by the cache, writing it to disc at the same time
 	_FAT_cache_destructor (partition->cache);
 
 	// Unlock the partition and destroy the lock
 	_FAT_unlock(&partition->lock);
 	_FAT_lock_deinit(&partition->lock);
-	
+
 	// Free memory used by the partition
 	_FAT_mem_free (partition);
 }
 
-
 PARTITION* _FAT_partition_getPartitionFromPath (const char* path) {
 	const devoptab_t *devops;
-	
+
 	devops = GetDeviceOpTab (path);
-	
+
 	if (!devops) {
 		return NULL;
 	}
-	
+
 	return (PARTITION*)devops->deviceData;
 }
