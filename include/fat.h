@@ -2,8 +2,10 @@
 	fat.h
 	Simple functionality for startup, mounting and unmounting of FAT-based devices.
 	
- Copyright (c) 2006 Michael "Chishm" Chisholm
-	
+ Copyright (c) 2006 - 2009
+	Michael "Chishm" Chisholm
+	Dave "WinterMute" Murphy
+
  Redistribution and use in source and binary forms, with or without modification,
  are permitted provided that the following conditions are met:
 
