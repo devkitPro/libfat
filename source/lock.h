@@ -83,5 +83,5 @@ static inline void _FAT_unlock(mutex_t *mutex)
 #endif // USE_LWP_LOCK
 
 
-#endif // _CACHE_H
+#endif // _LOCK_H
 
