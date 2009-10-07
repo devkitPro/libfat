@@ -36,7 +36,6 @@
 #include <errno.h>
 #include <ctype.h>
 #include <unistd.h>
-#include <stdio.h>
 
 #include "cache.h"
 #include "file_allocation_table.h"
@@ -728,7 +727,7 @@ ssize_t _FAT_write_r (struct _reent *r, int fd, const char *ptr, size_t len) {
 		tempVar = remain / BYTES_PER_READ;
 	}
 
-	if ((tempVar > 0) && flagNoError) {
+	if ((tempVar > 0 && tempVar < partition->sectorsPerCluster) && flagNoError) {
 		if (!_FAT_cache_writeSectors (cache,
 			_FAT_fat_clusterToSector (partition, position.cluster) + position.sector, tempVar, ptr))
 		{
@@ -740,6 +739,7 @@ ssize_t _FAT_write_r (struct _reent *r, int fd, const char *ptr, size_t len) {
 			position.sector += tempVar;
 		}
 	}
+
 
 	if ((position.sector >= partition->sectorsPerCluster) && flagNoError && (remain > 0)) {
 		position.sector = 0;
@@ -757,11 +757,12 @@ ssize_t _FAT_write_r (struct _reent *r, int fd, const char *ptr, size_t len) {
 		}
 	}
 
+	size_t chunkSize = partition->bytesPerCluster;
+
 	// Write whole clusters
 	while ((remain >= partition->bytesPerCluster) && flagNoError) {
 		uint32_t chunkEnd;
 		uint32_t nextChunkStart = position.cluster;
-		size_t chunkSize = 0;
 
 		do {
 			chunkEnd = nextChunkStart;
