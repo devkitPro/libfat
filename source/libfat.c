@@ -73,13 +73,11 @@ bool fatMount (const char* name, const DISC_INTERFACE* interface, sec_t startSec
 		return false;
 
 	if(!interface->isInserted()) {
-		interface->shutdown();
 		return false;
 	}
 
 	devops = _FAT_mem_allocate (sizeof(devoptab_t) + strlen(name) + 1);
 	if (!devops) {
-		interface->shutdown();
 		return false;
 	}
 	// Use the space allocated at the end of the devoptab struct for storing the name
@@ -89,7 +87,6 @@ bool fatMount (const char* name, const DISC_INTERFACE* interface, sec_t startSec
 	partition = _FAT_partition_constructor (interface, cacheSize, SectorsPerPage, startSector);
 	if (!partition) {
 		_FAT_mem_free (devops);
-		interface->shutdown();
 		return false;
 	}
 
@@ -111,7 +108,6 @@ bool fatMountSimple (const char* name, const DISC_INTERFACE* interface) {
 void fatUnmount (const char* name) {
 	devoptab_t *devops;
 	PARTITION* partition;
-	const DISC_INTERFACE *disc;
 
 	devops = (devoptab_t*)GetDeviceOpTab (name);
 	if (!devops) {
@@ -128,10 +124,8 @@ void fatUnmount (const char* name) {
 	}
 
 	partition = (PARTITION*)devops->deviceData;
-	disc = partition->disc;
 	_FAT_partition_destructor (partition);
 	_FAT_mem_free (devops);
-	disc->shutdown();
 }
 
 bool fatInit (uint32_t cacheSize, bool setAsDefaultDevice) {
