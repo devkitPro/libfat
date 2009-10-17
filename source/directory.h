@@ -170,4 +170,9 @@ Fill in a stat struct based on a file entry
 */
 void _FAT_directory_entryStat (PARTITION* partition, DIR_ENTRY* entry, struct stat *st);
 
+/*
+Get volume label
+*/
+bool _FAT_directory_getVolumeLabel (PARTITION* partition, char *label);
+
 #endif // _DIRECTORY_H

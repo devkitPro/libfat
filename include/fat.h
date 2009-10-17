@@ -92,6 +92,11 @@ If there are open files, it will attempt to synchronise them to disc.
 */
 extern void fatUnmount (const char* name);
 
+/*
+Get Volume Label
+*/
+extern void fatGetVolumeLabel (const char* name, char *label);
+
 #ifdef __cplusplus
 }
 #endif

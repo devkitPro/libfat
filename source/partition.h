@@ -67,6 +67,7 @@ typedef struct {
 	struct _FILE_STRUCT*  firstOpenFile;		// The start of a linked list of files
 	mutex_t               lock;					// A lock for partition operations
 	bool                  readOnly;				// If this is set, then do not try writing to the disc
+	char                  label[12];			// Volume label
 } PARTITION;
 
 /*
