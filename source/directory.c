@@ -449,7 +449,7 @@ bool _FAT_directory_getVolumeLabel (PARTITION* partition, char *label) {
 		{ //error reading
 			return false;
 		}
-		if ((entryData[DIR_ENTRY_attributes] == ATTRIB_VOL)) {		
+		if (entryData[DIR_ENTRY_attributes] == ATTRIB_VOL && entryData[0] != DIR_ENTRY_FREE) {		
 			for (i = 0; i < 11; i++) {
 				label[i] = entryData[DIR_ENTRY_name + i];
 			}
