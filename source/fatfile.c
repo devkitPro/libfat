@@ -26,6 +26,8 @@
  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
  EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+ 2009-10-23 oggzee: fixes for cluster aligned file size (write, truncate, seek)
 */
 
 
@@ -509,6 +511,43 @@ ssize_t _FAT_read_r (struct _reent *r, int fd, char *ptr, size_t len) {
 	return len;
 }
 
+// if current position is on the cluster border and more data has to be written
+// then get next cluster or allocate next cluster
+// this solves the over-allocation problems when file size is aligned to cluster size
+// return true on succes, false on error
+static bool _FAT_check_position_for_next_cluster(struct _reent *r,
+		FILE_POSITION *position, PARTITION* partition, size_t remain, bool *flagNoError)
+{
+	uint32_t tempNextCluster;
+	// do nothing if no more data to write
+	if (remain == 0) return true;
+	if (flagNoError && *flagNoError == false) return false;
+	if ((remain < 0) || (position->sector > partition->sectorsPerCluster)) {
+		// invalid arguments - internal error
+		r->_errno = EINVAL;
+		goto err;
+	}
+	if (position->sector == partition->sectorsPerCluster) {
+		// need to advance to next cluster
+		tempNextCluster = _FAT_fat_nextCluster(partition, position->cluster);
+		if ((tempNextCluster == CLUSTER_EOF) || (tempNextCluster == CLUSTER_FREE)) {
+			// Ran out of clusters so get a new one
+			tempNextCluster = _FAT_fat_linkFreeCluster(partition, position->cluster);
+		}
+		if (!_FAT_fat_isValidCluster(partition, tempNextCluster)) {
+			// Couldn't get a cluster, so abort
+			r->_errno = ENOSPC;
+			goto err;
+		}
+		position->sector = 0;
+		position->cluster = tempNextCluster;
+	}
+	return true;
+err:
+	if (flagNoError) *flagNoError = false;
+	return false;
+}
+
 /*
 Extend a file so that the size is the same as the rwPosition
 */
@@ -576,19 +615,9 @@ static bool _FAT_file_extend_r (struct _reent *r, FILE_STRUCT* file) {
 			position.sector ++;
 		}
 
-		if (position.sector >= partition->sectorsPerCluster) {
-			position.sector = 0;
-			tempNextCluster = _FAT_fat_nextCluster(partition, position.cluster);
-			if ((tempNextCluster == CLUSTER_EOF) || (tempNextCluster == CLUSTER_FREE)) {
-				// Ran out of clusters so get a new one
-				tempNextCluster = _FAT_fat_linkFreeCluster(partition, position.cluster);
-			}
-			if (!_FAT_fat_isValidCluster(partition, tempNextCluster)) {
-				// Couldn't get a cluster, so abort
-				r->_errno = ENOSPC;
-				return false;
-			}
-			position.cluster = tempNextCluster;
+		if (!_FAT_check_position_for_next_cluster(r, &position, partition, remain, NULL)) {
+			// error already marked
+			return false;
 		}
 
 		if (remain > 0) {
@@ -602,7 +631,6 @@ static bool _FAT_file_extend_r (struct _reent *r, FILE_STRUCT* file) {
 	file->filesize = file->currentPosition;
 	return true;
 }
-
 
 ssize_t _FAT_write_r (struct _reent *r, int fd, const char *ptr, size_t len) {
 	FILE_STRUCT* file = (FILE_STRUCT*)  fd;
@@ -680,21 +708,7 @@ ssize_t _FAT_write_r (struct _reent *r, int fd, const char *ptr, size_t len) {
 	}
 
 	// Move onto next cluster if needed
-	if (position.sector >= partition->sectorsPerCluster) {
-		position.sector = 0;
-		tempNextCluster = _FAT_fat_nextCluster(partition, position.cluster);
-		if ((tempNextCluster == CLUSTER_EOF) || (tempNextCluster == CLUSTER_FREE)) {
-			// Ran out of clusters so get a new one
-			tempNextCluster = _FAT_fat_linkFreeCluster(partition, position.cluster);
-		}
-		if (!_FAT_fat_isValidCluster(partition, tempNextCluster)) {
-			// Couldn't get a cluster, so abort
-			r->_errno = ENOSPC;
-			flagNoError = false;
-		} else {
-			position.cluster = tempNextCluster;
-		}
-	}
+	_FAT_check_position_for_next_cluster(r, &position, partition, remain, &flagNoError);
 
 	// Align to sector
 	tempVar = BYTES_PER_READ - position.byte;
@@ -740,49 +754,35 @@ ssize_t _FAT_write_r (struct _reent *r, int fd, const char *ptr, size_t len) {
 		}
 	}
 
-
-	if ((position.sector >= partition->sectorsPerCluster) && flagNoError && (remain > 0)) {
-		position.sector = 0;
-		tempNextCluster = _FAT_fat_nextCluster(partition, position.cluster);
-		if ((tempNextCluster == CLUSTER_EOF) || (tempNextCluster == CLUSTER_FREE)) {
-			// Ran out of clusters so get a new one
-			tempNextCluster = _FAT_fat_linkFreeCluster(partition, position.cluster);
-		}
-		if (!_FAT_fat_isValidCluster(partition, tempNextCluster)) {
-			// Couldn't get a cluster, so abort
-			r->_errno = ENOSPC;
-			flagNoError = false;
-		} else {
-			position.cluster = tempNextCluster;
-		}
-	}
-
-	size_t chunkSize = partition->bytesPerCluster;
-
 	// Write whole clusters
 	while ((remain >= partition->bytesPerCluster) && flagNoError) {
-		uint32_t chunkEnd;
+		// allocate next cluster
+		_FAT_check_position_for_next_cluster(r, &position, partition, remain, &flagNoError);
+		if (!flagNoError) break;
+		// set indexes to the current position
+		uint32_t chunkEnd = position.cluster;
 		uint32_t nextChunkStart = position.cluster;
+		size_t chunkSize = partition->bytesPerCluster;
+		FILE_POSITION next_position = position;
 
-		do {
-			chunkEnd = nextChunkStart;
-			nextChunkStart = _FAT_fat_nextCluster (partition, chunkEnd);
-			if ((nextChunkStart == CLUSTER_EOF) || (nextChunkStart == CLUSTER_FREE)) {
-				// Ran out of clusters so get a new one
-				nextChunkStart = _FAT_fat_linkFreeCluster(partition, chunkEnd);
-			}
-			if (!_FAT_fat_isValidCluster(partition, nextChunkStart)) {
-				// Couldn't get a cluster, so abort
-				r->_errno = ENOSPC;
-				flagNoError = false;
-			} else {
-				chunkSize += partition->bytesPerCluster;
-			}
-		} while (flagNoError && (nextChunkStart == chunkEnd + 1) &&
+		// group consecutive clusters
+		while (flagNoError &&
 #ifdef LIMIT_SECTORS
-		 	(chunkSize + partition->bytesPerCluster <= LIMIT_SECTORS * BYTES_PER_READ) &&
+				(chunkSize + partition->bytesPerCluster <= LIMIT_SECTORS * BYTES_PER_READ) &&
 #endif
-			(chunkSize + partition->bytesPerCluster <= remain));
+				(chunkSize + partition->bytesPerCluster < remain))
+		{
+			// pretend to use up all sectors in next_position 
+			next_position.sector = partition->sectorsPerCluster;
+			// get or allocate next cluster
+			_FAT_check_position_for_next_cluster(r, &next_position, partition,
+					remain - chunkSize, &flagNoError);
+			if (!flagNoError) break; // exit loop on error
+			nextChunkStart = next_position.cluster;
+			if (nextChunkStart != chunkEnd + 1) break; // exit loop if not consecutive
+			chunkEnd = nextChunkStart;
+			chunkSize += partition->bytesPerCluster;
+		}
 
 		if ( !_FAT_cache_writeSectors (cache,
 				_FAT_fat_clusterToSector(partition, position.cluster), chunkSize / BYTES_PER_READ, ptr))
@@ -794,14 +794,19 @@ ssize_t _FAT_write_r (struct _reent *r, int fd, const char *ptr, size_t len) {
 		ptr += chunkSize;
 		remain -= chunkSize;
 
-		if (_FAT_fat_isValidCluster(partition, nextChunkStart)) {
+		if ((chunkEnd != nextChunkStart) && _FAT_fat_isValidCluster(partition, nextChunkStart)) {
+			// new cluster is already allocated (because it was not consecutive)
 			position.cluster = nextChunkStart;
+			position.sector = 0;
 		} else {
 			// Allocate a new cluster when next writing the file
 			position.cluster = chunkEnd;
 			position.sector = partition->sectorsPerCluster;
 		}
 	}
+
+	// allocate next cluster if needed
+	_FAT_check_position_for_next_cluster(r, &position, partition, remain, &flagNoError);
 
 	// Write remaining sectors
 	tempVar = remain / BYTES_PER_READ; // Number of sectors left
@@ -906,19 +911,23 @@ off_t _FAT_seek_r (struct _reent *r, int fd, off_t pos, int dir) {
 	// Only change the read/write position if it is within the bounds of the current filesize,
 	// or at the very edge of the file
 	if (position <= file->filesize && file->startCluster != CLUSTER_FREE) {
+		// Calculate where the correct cluster is
+		// how many clusters from start of file
+		clusCount = position / partition->bytesPerCluster;
+		cluster = file->startCluster;
+		if (position >= file->currentPosition) {
+			// start from current cluster
+			int currentCount = file->currentPosition / partition->bytesPerCluster;
+			if (file->rwPosition.sector == partition->sectorsPerCluster) {
+				currentCount--;
+			}
+			clusCount -= currentCount;
+			cluster = file->rwPosition.cluster;
+		}
 		// Calculate the sector and byte of the current position,
 		// and store them
 		file->rwPosition.sector = (position % partition->bytesPerCluster) / BYTES_PER_READ;
 		file->rwPosition.byte = position % BYTES_PER_READ;
-
-		// Calculate where the correct cluster is
-		if ((position >= file->currentPosition) && (file->rwPosition.sector != partition->sectorsPerCluster)) {
-			clusCount = (position / partition->bytesPerCluster) - (file->currentPosition / partition->bytesPerCluster);
-			cluster = file->rwPosition.cluster;
-		} else {
-			clusCount = position / partition->bytesPerCluster;
-			cluster = file->startCluster;
-		}
 
 		nextCluster = _FAT_fat_nextCluster (partition, cluster);
 		while ((clusCount > 0) && (nextCluster != CLUSTER_FREE) && (nextCluster != CLUSTER_EOF)) {
