@@ -203,7 +203,7 @@ void fatGetVolumeLabel (const char* name, char *label) {
 		return;
 
 	namelen = strlen(name);
-	buf=(char*)malloc(sizeof(char)*namelen+2);	
+	buf=(char*)_FAT_mem_allocate(sizeof(char)*namelen+2);	
 	strcpy(buf,name);
 
 	if (name[namelen-1] == '/') {
