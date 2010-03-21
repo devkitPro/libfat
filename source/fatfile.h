@@ -95,10 +95,6 @@ int _FAT_ftruncate_r (struct _reent *r, int fd, off_t len);
 
 int _FAT_fsync_r (struct _reent *r, int fd);
 
-int _FAT_chflags_r (struct _reent *r, const char *path, u_int flags);
-
-int _FAT_fchflags_r (struct _reent *r, int fd, u_int flags);
-
 /*
 Synchronizes the file data to disc.
 Does no locking of its own -- lock the partition before calling.
