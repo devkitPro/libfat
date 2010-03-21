@@ -61,7 +61,9 @@ static const devoptab_t dotab_fat = {
 	_FAT_statvfs_r,
 	_FAT_ftruncate_r,
 	_FAT_fsync_r,
-	NULL	/* Device data */
+	NULL,	/* Device data */
+	NULL,
+	NULL
 };
 
 bool fatMount (const char* name, const DISC_INTERFACE* interface, sec_t startSector, uint32_t cacheSize, uint32_t SectorsPerPage) {
@@ -220,11 +222,11 @@ void fatGetVolumeLabel (const char* name, char *label) {
 
 	for(i=0;buf[i]!='\0' && buf[i]!=':';i++);  
 	if (!devops || strncasecmp(buf,devops->name,i)) {
-		free(buf);
+		_FAT_mem_free(buf);
 		return;
 	}
 
-	free(buf);
+	_FAT_mem_free(buf);
 
 	// Perform a quick check to make sure we're dealing with a libfat controlled device
 	if (devops->open_r != dotab_fat.open_r) {
