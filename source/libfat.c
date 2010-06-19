@@ -76,7 +76,7 @@ bool fatMount (const char* name, const DISC_INTERFACE* interface, sec_t startSec
 
 	char devname[10];
 	sprintf(devname, "%s:", name);
-	if(FindDevice(devname))
+	if(FindDevice(devname) >= 0)
 		return false;
 
 	if(!interface->startup())
