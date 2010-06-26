@@ -29,6 +29,7 @@
 #include <sys/iosupport.h>
 #include <unistd.h>
 #include <string.h>
+#include <stdio.h>
 
 #include "common.h"
 #include "partition.h"
@@ -74,16 +75,16 @@ bool fatMount (const char* name, const DISC_INTERFACE* interface, sec_t startSec
 	if(!name || !interface)
 		return false;
 
-	char devname[10];
-	sprintf(devname, "%s:", name);
-	if(FindDevice(devname) >= 0)
-		return false;
-
 	if(!interface->startup())
 		return false;
 
 	if(!interface->isInserted())
 		return false;
+
+	char devname[10];
+	sprintf(devname, "%s:", name);
+	if(FindDevice(devname) >= 0)
+		return true;
 
 	devops = _FAT_mem_allocate (sizeof(devoptab_t) + strlen(name) + 1);
 	if (!devops) {
