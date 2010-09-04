@@ -72,7 +72,7 @@ bool fatMount (const char* name, const DISC_INTERFACE* interface, sec_t startSec
 	devoptab_t* devops;
 	char* nameCopy;
 
-	if(!name || !interface)
+	if(!name || strlen(name) > 8 || !interface)
 		return false;
 
 	if(!interface->startup())
@@ -82,7 +82,7 @@ bool fatMount (const char* name, const DISC_INTERFACE* interface, sec_t startSec
 		return false;
 
 	char devname[10];
-	snprintf(devname, 10, "%s:", name);
+	sprintf(devname, "%s:", name);
 	if(FindDevice(devname) >= 0)
 		return true;
 
