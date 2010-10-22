@@ -158,7 +158,7 @@ bool _FAT_cache_readSectors(CACHE *cache,sec_t sector,sec_t numSectors,void *buf
 	sec_t sec;
 	sec_t secs_to_read;
 	CACHE_ENTRY *entry;
-	uint8_t *dest = buffer;
+	uint8_t *dest = (uint8_t *)buffer;
 
 	while(numSectors>0) {
 		entry = _FAT_cache_getPage(cache,sector);
