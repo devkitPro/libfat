@@ -297,7 +297,7 @@ bool _FAT_cache_writeSectors (CACHE* cache, sec_t sector, sec_t numSectors, cons
 	sec_t sec;
 	sec_t secs_to_write;
 	CACHE_ENTRY* entry;
-	const uint8_t *src = buffer;
+	const uint8_t *src = (const uint8_t *)buffer;
 
 	while(numSectors>0)
 	{
