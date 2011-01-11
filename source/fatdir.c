@@ -32,7 +32,7 @@
 #include <errno.h>
 #include <ctype.h>
 #include <unistd.h>
-#include <sys/dir.h>
+#include <sys/iosupport.h>
 
 #include "fatdir.h"
 
