@@ -39,11 +39,6 @@
 #include <sys/iosupport.h>
 
 /*
-This device name, as known by devkitPro toolchains
-*/
-const char* DEVICE_NAME = "fat";
-
-/*
 Data offsets
 */
 
@@ -108,14 +103,13 @@ static const char FAT_SIG[3] = {'F', 'A', 'T'};
 static const char FS_INFO_SIG1[4] = {'R', 'R', 'a', 'A'};
 static const char FS_INFO_SIG2[4] = {'r', 'r', 'A', 'a'};
 
+static	uint8_t sectorBuffer[BYTES_PER_READ] __attribute__((aligned(32)));
 
 sec_t FindFirstValidPartition(const DISC_INTERFACE* disc)
 {
 	uint8_t part_table[16*4];
 	uint8_t *ptr;
 	int i;
-
-	uint8_t sectorBuffer[BYTES_PER_READ] = {0};
 
 	// Read first sector of disc
 	if (!_FAT_disc_readSectors (disc, 0, 1, sectorBuffer)) {
@@ -168,9 +162,9 @@ sec_t FindFirstValidPartition(const DISC_INTERFACE* disc)
 	return 0;
 }
 
+
 PARTITION* _FAT_partition_constructor (const DISC_INTERFACE* disc, uint32_t cacheSize, uint32_t sectorsPerPage, sec_t startSector) {
 	PARTITION* partition;
-	uint8_t sectorBuffer[BYTES_PER_READ] = {0};
 
 	// Read first sector of disc
 	if (!_FAT_disc_readSectors (disc, startSector, 1, sectorBuffer)) {
@@ -196,14 +190,14 @@ PARTITION* _FAT_partition_constructor (const DISC_INTERFACE* disc, uint32_t cach
 			return NULL;
 		}
 	}
-
+	
 	// Now verify that this is indeed a FAT partition
 	if (memcmp(sectorBuffer + BPB_FAT16_fileSysType, FAT_SIG, sizeof(FAT_SIG)) &&
 		memcmp(sectorBuffer + BPB_FAT32_fileSysType, FAT_SIG, sizeof(FAT_SIG)))
 	{
 		return NULL;
 	}
-
+	
 	partition = (PARTITION*) _FAT_mem_allocate (sizeof(PARTITION));
 	if (partition == NULL) {
 		return NULL;

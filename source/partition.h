@@ -34,9 +34,6 @@
 #include "cache.h"
 #include "lock.h"
 
-// Device name
-extern const char* DEVICE_NAME;
-
 // Filesystem type
 typedef enum {FS_UNKNOWN, FS_FAT12, FS_FAT16, FS_FAT32} FS_TYPE;
 
