@@ -30,6 +30,7 @@
 
 #include "file_allocation_table.h"
 #include "partition.h"
+#include "mem_allocate.h"
 #include <string.h>
 
 /*
@@ -269,7 +270,7 @@ If an error occurs, return CLUSTER_ERROR
 uint32_t _FAT_fat_linkFreeClusterCleared (PARTITION* partition, uint32_t cluster) {
 	uint32_t newCluster;
 	uint32_t i;
-	uint8_t emptySector[partition->bytesPerSector];
+	uint8_t *emptySector;
 
 	// Link the cluster
 	newCluster = _FAT_fat_linkFreeCluster(partition, cluster);
@@ -278,6 +279,8 @@ uint32_t _FAT_fat_linkFreeClusterCleared (PARTITION* partition, uint32_t cluster
 		return CLUSTER_ERROR;
 	}
 
+    emptySector = (uint8_t*) _FAT_mem_allocate(partition->bytesPerSector);
+
 	// Clear all the sectors within the cluster
 	memset (emptySector, 0, partition->bytesPerSector);
 	for (i = 0; i < partition->sectorsPerCluster; i++) {
@@ -285,6 +288,8 @@ uint32_t _FAT_fat_linkFreeClusterCleared (PARTITION* partition, uint32_t cluster
 			_FAT_fat_clusterToSector (partition, newCluster) + i,
 			1, emptySector);
 	}
+
+	_FAT_mem_free(emptySector);
 
 	return newCluster;
 }
