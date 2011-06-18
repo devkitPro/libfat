@@ -34,6 +34,9 @@
 #include "cache.h"
 #include "lock.h"
 
+#define MIN_SECTOR_SIZE     512
+#define MAX_SECTOR_SIZE     4096
+
 // Filesystem type
 typedef enum {FS_UNKNOWN, FS_FAT12, FS_FAT16, FS_FAT32} FS_TYPE;
 

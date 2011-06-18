@@ -54,15 +54,15 @@ uint32_t _FAT_fat_nextCluster(PARTITION* partition, uint32_t cluster)
 		case FS_FAT12:
 		{
 			u32 nextCluster_h;
-			sector = partition->fat.fatStart + (((cluster * 3) / 2) / BYTES_PER_READ);
-			offset = ((cluster * 3) / 2) % BYTES_PER_READ;
+			sector = partition->fat.fatStart + (((cluster * 3) / 2) / partition->bytesPerSector);
+			offset = ((cluster * 3) / 2) % partition->bytesPerSector;
 
 
 			_FAT_cache_readLittleEndianValue (partition->cache, &nextCluster, sector, offset, sizeof(u8));
 
 			offset++;
 
-			if (offset >= BYTES_PER_READ) {
+			if (offset >= partition->bytesPerSector) {
 				offset = 0;
 				sector++;
 			}
@@ -85,8 +85,8 @@ uint32_t _FAT_fat_nextCluster(PARTITION* partition, uint32_t cluster)
 			break;
 		}
 		case FS_FAT16:
-			sector = partition->fat.fatStart + ((cluster << 1) / BYTES_PER_READ);
-			offset = (cluster % (BYTES_PER_READ >> 1)) << 1;
+			sector = partition->fat.fatStart + ((cluster << 1) / partition->bytesPerSector);
+			offset = (cluster % (partition->bytesPerSector >> 1)) << 1;
 
 			_FAT_cache_readLittleEndianValue (partition->cache, &nextCluster, sector, offset, sizeof(u16));
 
@@ -96,8 +96,8 @@ uint32_t _FAT_fat_nextCluster(PARTITION* partition, uint32_t cluster)
 			break;
 
 		case FS_FAT32:
-			sector = partition->fat.fatStart + ((cluster << 2) / BYTES_PER_READ);
-			offset = (cluster % (BYTES_PER_READ >> 2)) << 2;
+			sector = partition->fat.fatStart + ((cluster << 2) / partition->bytesPerSector);
+			offset = (cluster % (partition->bytesPerSector >> 2)) << 2;
 
 			_FAT_cache_readLittleEndianValue (partition->cache, &nextCluster, sector, offset, sizeof(u32));
 
@@ -135,8 +135,8 @@ static bool _FAT_fat_writeFatEntry (PARTITION* partition, uint32_t cluster, uint
 			break;
 
 		case FS_FAT12:
-			sector = partition->fat.fatStart + (((cluster * 3) / 2) / BYTES_PER_READ);
-			offset = ((cluster * 3) / 2) % BYTES_PER_READ;
+			sector = partition->fat.fatStart + (((cluster * 3) / 2) / partition->bytesPerSector);
+			offset = ((cluster * 3) / 2) % partition->bytesPerSector;
 
 			if (cluster & 0x01) {
 
@@ -147,7 +147,7 @@ static bool _FAT_fat_writeFatEntry (PARTITION* partition, uint32_t cluster, uint
 				_FAT_cache_writeLittleEndianValue (partition->cache, value & 0xFF, sector, offset, sizeof(u8));
 
 				offset++;
-				if (offset >= BYTES_PER_READ) {
+				if (offset >= partition->bytesPerSector) {
 					offset = 0;
 					sector++;
 				}
@@ -159,7 +159,7 @@ static bool _FAT_fat_writeFatEntry (PARTITION* partition, uint32_t cluster, uint
 				_FAT_cache_writeLittleEndianValue (partition->cache, value, sector, offset, sizeof(u8));
 
 				offset++;
-				if (offset >= BYTES_PER_READ) {
+				if (offset >= partition->bytesPerSector) {
 					offset = 0;
 					sector++;
 				}
@@ -174,16 +174,16 @@ static bool _FAT_fat_writeFatEntry (PARTITION* partition, uint32_t cluster, uint
 			break;
 
 		case FS_FAT16:
-			sector = partition->fat.fatStart + ((cluster << 1) / BYTES_PER_READ);
-			offset = (cluster % (BYTES_PER_READ >> 1)) << 1;
+			sector = partition->fat.fatStart + ((cluster << 1) / partition->bytesPerSector);
+			offset = (cluster % (partition->bytesPerSector >> 1)) << 1;
 
 			_FAT_cache_writeLittleEndianValue (partition->cache, value, sector, offset, sizeof(u16));
 
 			break;
 
 		case FS_FAT32:
-			sector = partition->fat.fatStart + ((cluster << 2) / BYTES_PER_READ);
-			offset = (cluster % (BYTES_PER_READ >> 2)) << 2;
+			sector = partition->fat.fatStart + ((cluster << 2) / partition->bytesPerSector);
+			offset = (cluster % (partition->bytesPerSector >> 2)) << 2;
 
 			_FAT_cache_writeLittleEndianValue (partition->cache, value, sector, offset, sizeof(u32));
 
@@ -269,7 +269,7 @@ If an error occurs, return CLUSTER_ERROR
 uint32_t _FAT_fat_linkFreeClusterCleared (PARTITION* partition, uint32_t cluster) {
 	uint32_t newCluster;
 	uint32_t i;
-	uint8_t emptySector[BYTES_PER_READ];
+	uint8_t emptySector[partition->bytesPerSector];
 
 	// Link the cluster
 	newCluster = _FAT_fat_linkFreeCluster(partition, cluster);
@@ -279,7 +279,7 @@ uint32_t _FAT_fat_linkFreeClusterCleared (PARTITION* partition, uint32_t cluster
 	}
 
 	// Clear all the sectors within the cluster
-	memset (emptySector, 0, BYTES_PER_READ);
+	memset (emptySector, 0, partition->bytesPerSector);
 	for (i = 0; i < partition->sectorsPerCluster; i++) {
 		_FAT_cache_writeSectors (partition->cache,
 			_FAT_fat_clusterToSector (partition, newCluster) + i,
