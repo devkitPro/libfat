@@ -204,8 +204,10 @@ static int _FAT_directory_mbsncasecmp (const char* s1, const char* s2, size_t le
 
 
 static bool _FAT_directory_entryGetAlias (const u8* entryData, char* destName) {
-	int i=0;
-	int j=0;
+	char c;
+	bool caseInfo;
+	int i = 0;
+	int j = 0;
 
 	destName[0] = '\0';
 	if (entryData[0] != DIR_ENTRY_FREE) {
@@ -219,14 +221,18 @@ static bool _FAT_directory_entryGetAlias (const u8* entryData, char* destName) {
 			}
 		} else {
 			// Copy the filename from the dirEntry to the string
+			caseInfo = entryData[DIR_ENTRY_caseInfo] & CASE_LOWER_BASE;
 			for (i = 0; (i < 8) && (entryData[DIR_ENTRY_name + i] != ' '); i++) {
-				destName[i] = entryData[DIR_ENTRY_name + i];
+				c = entryData[DIR_ENTRY_name + i];
+				destName[i] = (caseInfo ? tolower(c) : c);
 			}
 			// Copy the extension from the dirEntry to the string
 			if (entryData[DIR_ENTRY_extension] != ' ') {
 				destName[i++] = '.';
+				caseInfo = entryData[DIR_ENTRY_caseInfo] & CASE_LOWER_EXT;
 				for ( j = 0; (j < 3) && (entryData[DIR_ENTRY_extension + j] != ' '); j++) {
-					destName[i++] = entryData[DIR_ENTRY_extension + j];
+					c = entryData[DIR_ENTRY_extension + j];
+					destName[i++] = (caseInfo ? tolower(c) : c);
 				}
 			}
 			destName[i] = '\0';
