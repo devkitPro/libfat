@@ -224,7 +224,7 @@ static bool _FAT_directory_entryGetAlias (const u8* entryData, char* destName) {
 			caseInfo = entryData[DIR_ENTRY_caseInfo] & CASE_LOWER_BASE;
 			for (i = 0; (i < 8) && (entryData[DIR_ENTRY_name + i] != ' '); i++) {
 				c = entryData[DIR_ENTRY_name + i];
-				destName[i] = (caseInfo ? tolower(c) : c);
+				destName[i] = (caseInfo ? tolower((unsigned char)c) : c);
 			}
 			// Copy the extension from the dirEntry to the string
 			if (entryData[DIR_ENTRY_extension] != ' ') {
@@ -232,7 +232,7 @@ static bool _FAT_directory_entryGetAlias (const u8* entryData, char* destName) {
 				caseInfo = entryData[DIR_ENTRY_caseInfo] & CASE_LOWER_EXT;
 				for ( j = 0; (j < 3) && (entryData[DIR_ENTRY_extension + j] != ' '); j++) {
 					c = entryData[DIR_ENTRY_extension + j];
-					destName[i++] = (caseInfo ? tolower(c) : c);
+					destName[i++] = (caseInfo ? tolower((unsigned char)c) : c);
 				}
 			}
 			destName[i] = '\0';

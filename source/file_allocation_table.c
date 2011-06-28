@@ -247,7 +247,7 @@ uint32_t _FAT_fat_linkFreeCluster(PARTITION* partition, uint32_t cluster) {
 	}
 	partition->fat.firstFree = firstFree;
 	if(partition->fat.numberFreeCluster)
-        partition->fat.numberFreeCluster--;
+		partition->fat.numberFreeCluster--;
 	partition->fat.numberLastAllocCluster = firstFree;
 
 	if ((cluster >= CLUSTER_FIRST) && (cluster <= lastCluster))
@@ -279,7 +279,7 @@ uint32_t _FAT_fat_linkFreeClusterCleared (PARTITION* partition, uint32_t cluster
 		return CLUSTER_ERROR;
 	}
 
-    emptySector = (uint8_t*) _FAT_mem_allocate(partition->bytesPerSector);
+	emptySector = (uint8_t*) _FAT_mem_allocate(partition->bytesPerSector);
 
 	// Clear all the sectors within the cluster
 	memset (emptySector, 0, partition->bytesPerSector);
@@ -317,8 +317,8 @@ bool _FAT_fat_clearLinks (PARTITION* partition, uint32_t cluster) {
 		// Erase the link
 		_FAT_fat_writeFatEntry (partition, cluster, CLUSTER_FREE);
 
-        if(partition->fat.numberFreeCluster < (partition->numberOfSectors/partition->sectorsPerCluster))
-            partition->fat.numberFreeCluster++;
+		if(partition->fat.numberFreeCluster < (partition->numberOfSectors/partition->sectorsPerCluster))
+			partition->fat.numberFreeCluster++;
 		// Move onto next cluster
 		cluster = nextCluster;
 	}
