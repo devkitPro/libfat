@@ -45,6 +45,37 @@
 #include "filetime.h"
 #include "lock.h"
 
+bool _FAT_findEntry(const char *path, DIR_ENTRY *dirEntry) {
+	PARTITION *partition = _FAT_partition_getPartitionFromPath(path);
+
+	// Move the path pointer to the start of the actual path
+	if (strchr (path, ':') != NULL) {
+		path = strchr (path, ':') + 1;
+	}
+	if (strchr (path, ':') != NULL) {
+		return false;
+	}
+
+	// Search for the file on the disc
+	return _FAT_directory_entryFromPath (partition, dirEntry, path, NULL);
+	
+}
+
+int	FAT_getAttr(const char *file) {
+	DIR_ENTRY dirEntry;
+	if (!_FAT_findEntry(file,&dirEntry)) return -1;
+	 
+	return dirEntry.entryData[DIR_ENTRY_attributes];
+}
+
+int FAT_setAttr(const char *file, int attr) {
+	DIR_ENTRY dirEntry;
+	if (!_FAT_findEntry(file,&dirEntry)) return -1;
+	
+	return 0;
+}
+
+
 int _FAT_open_r (struct _reent *r, void *fileStruct, const char *path, int flags, int mode) {
 	PARTITION* partition = NULL;
 	bool fileExists;
