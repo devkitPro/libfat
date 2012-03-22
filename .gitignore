@@ -1,0 +1,8 @@
+gba/lib
+gba/release
+include/libfatversion.h
+libogc/cube_release
+libogc/lib
+libogc/wii_release
+nds/lib
+nds/release
