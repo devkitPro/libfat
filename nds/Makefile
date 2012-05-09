@@ -95,7 +95,7 @@ $(BUILD):
 #---------------------------------------------------------------------------------
 clean:
 	@echo clean ...
-	@rm -fr debug release $(LIB)
+	@rm -fr debug release $(LIB) include
 
 all: $(ARM9BIN)
 
