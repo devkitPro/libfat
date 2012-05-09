@@ -73,9 +73,9 @@ ogc-dist-bin: ogc-release distribute/$(VERSTRING)
 dist-src: distribute/$(VERSTRING)
 	@tar --exclude=.svn --exclude=*CVS* -cvjf distribute/$(VERSTRING)/libfat-src-$(VERSTRING).tar.bz2 \
 	source include Makefile \
-	nds/Makefile nds/include \
-	gba/Makefile gba/include \
-	libogc/Makefile libogc/include
+	nds/Makefile \
+	gba/Makefile \
+	libogc/Makefile
 
 dist: include/libfatversion.h dist-bin dist-src
 
