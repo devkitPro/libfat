@@ -36,6 +36,8 @@
 extern "C" {
 #endif
 
+#include "libfatversion.h"
+
 // When compiling for NDS, make sure NDS is defined
 #ifndef NDS
  #if defined ARM9 || defined ARM7
@@ -49,9 +51,9 @@ extern "C" {
 #  include <ogc/disc_io.h>
 #else
 #  ifdef NDS
-#    include "nds/disc_io.h"
+#    include <nds/disc_io.h>
 #  else
-#    include "disc_io.h"
+#    include <disc_io.h>
 #  endif
 #endif
 

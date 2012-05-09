@@ -101,12 +101,14 @@ clean:
 all: $(CUBEBIN)
 
 dist-bin:
+	@mkdir -p include
+	@cp $(TOPDIR)/include/fat.h $(TOPDIR)/include/libfatversion.h include
 	@tar --exclude=.svn --exclude=*CVS* -cvjf $(TOPDIR)/distribute/$(VERSTRING)/libfat-ogc-$(VERSTRING).tar.bz2 include lib
 
 install:
-	cp lib/wii/libfat.a $(DEVKITPRO)/libogc/lib/wii
-	cp lib/cube/libfat.a $(DEVKITPRO)/libogc/lib/cube
-	cp include/fat.h $(DEVKITPRO)/libogc/include
+	@cp lib/wii/libfat.a $(DEVKITPRO)/libogc/lib/wii
+	@cp lib/cube/libfat.a $(DEVKITPRO)/libogc/lib/cube
+	@cp $(TOPDIR)/include/fat.h $(TOPDIR)/include/libfatversion.h $(DEVKITPRO)/libogc/include
 
 #---------------------------------------------------------------------------------
 else
