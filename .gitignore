@@ -7,3 +7,6 @@ libogc/wii_release
 nds/lib
 nds/release
 distribute
+gba/include
+libogc/include
+nds/include
