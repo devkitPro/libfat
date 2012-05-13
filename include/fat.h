@@ -2,7 +2,7 @@
 	fat.h
 	Simple functionality for startup, mounting and unmounting of FAT-based devices.
 	
- Copyright (c) 2006 - 2009
+ Copyright (c) 2006 - 2012
 	Michael "Chishm" Chisholm
 	Dave "WinterMute" Murphy
 
