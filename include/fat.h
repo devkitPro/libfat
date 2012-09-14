@@ -113,6 +113,7 @@ Methods to modify DOS File Attributes
 int	FAT_getAttr(const char *file);
 int	FAT_setAttr(const char *file, int attr );
 
+#define LIBFAT_FEOS_MULTICWD
 
 #ifdef __cplusplus
 }
