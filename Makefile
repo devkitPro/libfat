@@ -15,37 +15,37 @@ default: release
 
 all: release dist
 
-release: include/libfatversion.h nds-release gba-release cube-release wii-release
+release: nds-release gba-release cube-release wii-release
 
-ogc-release: cube-release wii-release
+ogc-release: include/libfatversion.h cube-release wii-release
 
-nds-release:
+nds-release: include/libfatversion.h
 	$(MAKE) -C nds BUILD=release
 
-gba-release:
+gba-release: include/libfatversion.h
 	$(MAKE) -C gba BUILD=release
 
-cube-release:
+cube-release: include/libfatversion.h
 	$(MAKE) -C libogc PLATFORM=cube BUILD=cube_release
 
-wii-release:
+wii-release: include/libfatversion.h
 	$(MAKE) -C libogc PLATFORM=wii BUILD=wii_release
 
 debug: nds-debug gba-debug cube-debug wii-debug
 
 ogc-debug: cube-debug wii-debug
 
-nds-debug:
+nds-debug: include/libfatversion.h
 	$(MAKE) -C nds BUILD=debug
 
-gba-debug:
+gba-debug: include/libfatversion.h
 	$(MAKE) -C gba BUILD=debug
 
 
-cube-debug:
+cube-debug: include/libfatversion.h
 	$(MAKE) -C libogc PLATFORM=cube BUILD=wii_debug
 
-wii-debug:
+wii-debug: include/libfatversion.h
 	$(MAKE) -C libogc PLATFORM=wii BUILD=cube_debug
 
 clean: nds-clean gba-clean ogc-clean
