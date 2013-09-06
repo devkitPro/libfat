@@ -61,13 +61,13 @@ ogc-clean:
 
 dist-bin: nds-dist-bin gba-dist-bin ogc-dist-bin
 
-nds-dist-bin: nds-release distribute/$(VERSTRING)
+nds-dist-bin: include/libfatversion.h nds-release distribute/$(VERSTRING)
 	$(MAKE) -C nds dist-bin
 
-gba-dist-bin: gba-release distribute/$(VERSTRING)
+gba-dist-bin: include/libfatversion.h gba-release distribute/$(VERSTRING)
 	$(MAKE) -C gba dist-bin
 
-ogc-dist-bin: ogc-release distribute/$(VERSTRING)
+ogc-dist-bin: include/libfatversion.h ogc-release distribute/$(VERSTRING)
 	$(MAKE) -C libogc dist-bin
 
 dist-src: distribute/$(VERSTRING)
@@ -77,7 +77,7 @@ dist-src: distribute/$(VERSTRING)
 	gba/Makefile \
 	libogc/Makefile
 
-dist: include/libfatversion.h dist-bin dist-src
+dist: dist-bin dist-src
 
 distribute/$(VERSTRING):
 	@[ -d $@ ] || mkdir -p $@
