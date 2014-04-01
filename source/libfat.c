@@ -30,6 +30,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <stdio.h>
+#include <sys/param.h>
 
 #include "common.h"
 #include "partition.h"
