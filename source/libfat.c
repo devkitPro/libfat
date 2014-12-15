@@ -30,7 +30,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <stdio.h>
-#include <sys/param.h>
+#include <limits.h>
 
 #include "common.h"
 #include "partition.h"
@@ -167,7 +167,7 @@ bool fatInit (uint32_t cacheSize, bool setAsDefaultDevice) {
 	}
 
 	if (setAsDefaultDevice) {
-		char filePath[MAXPATHLEN * 2];
+		char filePath[PATH_MAX];
 		strcpy (filePath, _FAT_disc_interfaces[defaultDevice].name);
 		strcat (filePath, ":/");
 #ifdef ARGV_MAGIC
