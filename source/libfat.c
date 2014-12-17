@@ -64,8 +64,10 @@ static const devoptab_t dotab_fat = {
 	_FAT_ftruncate_r,
 	_FAT_fsync_r,
 	NULL,	/* Device data */
-	NULL,
-	NULL
+	NULL,	// chmod_r
+	NULL,	// fchmod_r
+	NULL,	// rmdir_r
+	true	// stdioUnbuffered;
 };
 
 bool fatMount (const char* name, const DISC_INTERFACE* interface, sec_t startSector, uint32_t cacheSize, uint32_t SectorsPerPage) {
