@@ -975,14 +975,12 @@ bool _FAT_directory_addEntry (PARTITION* partition, DIR_ENTRY* entry, uint32_t d
 				i = 0;
 				j = MAX_ALIAS_PRI_LENGTH;
 				// Move extension to last 3 characters
-				while (alias[i] != '.' && alias[i] != '\0') i--;
+				while (alias[i] != '.' && alias[i] != '\0') i++;
 				if (i < j) {
-					j = MAX_ALIAS_LENGTH - MAX_ALIAS_EXT_LENGTH - 2; // 1 char for '.', one for NUL, 3 for extension
 					memmove (alias + j, alias + i, aliasLen - i + 1);
 					// Pad primary component
 					memset (alias + i, '_', j - i);
 				}
-
 				// Generate numeric tail
 				for (i = 1; i <= MAX_NUMERIC_TAIL; i++) {
 					j = i;
