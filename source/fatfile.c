@@ -602,7 +602,7 @@ static bool _FAT_check_position_for_next_cluster(struct _reent *r,
 	// do nothing if no more data to write
 	if (remain == 0) return true;
 	if (flagNoError && *flagNoError == false) return false;
-	if ((remain < 0) || (position->sector > partition->sectorsPerCluster)) {
+	if (position->sector > partition->sectorsPerCluster) {
 		// invalid arguments - internal error
 		r->_errno = EINVAL;
 		goto err;
