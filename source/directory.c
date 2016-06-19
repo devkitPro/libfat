@@ -98,7 +98,8 @@ static int _FAT_directory_lfnLength (const char* name) {
 	}
 	// Make sure the name doesn't contain any control codes or codes not representable in UCS-2
 	for (i = 0; i < nameLength; i++) {
-		if (name[i] < 0x20 || name[i] >= ABOVE_UCS_RANGE) {
+		unsigned char ch = (unsigned char) name[i];
+		if (ch < 0x20 || ch >= ABOVE_UCS_RANGE) {
 			return -1;
 		}
 	}
