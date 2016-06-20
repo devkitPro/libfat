@@ -588,7 +588,6 @@ int _FAT_dirnext_r (struct _reent *r, DIR_ITER *dirState, char *filename, struct
 	// Make sure there is another file to report on
 	if (! state->validEntry) {
 		_FAT_unlock(&state->partition->lock);
-		r->_errno = ENOENT;
 		return -1;
 	}
 
