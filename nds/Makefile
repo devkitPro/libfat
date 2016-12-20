@@ -105,8 +105,8 @@ dist-bin:
 	@tar --exclude=.svn --exclude=*CVS* -cvjf $(TOPDIR)/distribute/$(VERSTRING)/libfat-nds-$(VERSTRING).tar.bz2 include lib
 
 install:
-	@cp lib/libfat.a $(DEVKITPRO)/libnds/lib
-	@cp $(TOPDIR)/include/fat.h $(TOPDIR)/include/libfatversion.h $(DEVKITPRO)/libnds/include
+	@cp -v lib/libfat.a $(DEVKITPRO)/libnds/lib
+	@cp -v $(TOPDIR)/include/fat.h $(TOPDIR)/include/libfatversion.h $(DEVKITPRO)/libnds/include
 
 #---------------------------------------------------------------------------------
 else
