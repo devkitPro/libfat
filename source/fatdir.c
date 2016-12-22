@@ -136,7 +136,7 @@ int _FAT_unlink_r (struct _reent *r, const char *path) {
 			if (!_FAT_directory_isDot (&dirContents)) {
 				// The directory had something in it that isn't a reference to itself or it's parent
 				_FAT_unlock(&partition->lock);
-				r->_errno = EPERM;
+				r->_errno = ENOTEMPTY;
 				return -1;
 			}
 			nextEntry = _FAT_directory_getNextEntry (partition, &dirContents);
@@ -588,7 +588,6 @@ int _FAT_dirnext_r (struct _reent *r, DIR_ITER *dirState, char *filename, struct
 	// Make sure there is another file to report on
 	if (! state->validEntry) {
 		_FAT_unlock(&state->partition->lock);
-		r->_errno = ENOENT;
 		return -1;
 	}
 
