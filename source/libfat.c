@@ -154,6 +154,9 @@ bool fatInit (uint32_t cacheSize, bool setAsDefaultDevice) {
 		i++)
 	{
 		disc = _FAT_disc_interfaces[i].getInterface();
+		if (!disc) {
+			continue;
+		}
 		if (fatMount (_FAT_disc_interfaces[i].name, disc, 0, cacheSize, DEFAULT_SECTORS_PAGE)) {
 			// The first device to successfully mount is set as the default
 			if (defaultDevice < 0) {
