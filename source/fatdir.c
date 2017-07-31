@@ -465,16 +465,13 @@ int _FAT_statvfs_r (struct _reent *r, const char *path, struct statvfs *buf)
 
 	_FAT_lock(&partition->lock);
 
-	if(memcmp(&buf->f_flag, "SCAN", 4) == 0)
-	{
-		//Special command was given to sync the numberFreeCluster
-		_FAT_partition_createFSinfo(partition);
-	}
-
-	if(partition->filesysType == FS_FAT32)
+	if(partition->filesysType == FS_FAT32) {
+		// Sync FSinfo block
+		_FAT_partition_readFSinfo(partition);
 		freeClusterCount = partition->fat.numberFreeCluster;
-	else
+	} else {
 		freeClusterCount = _FAT_fat_freeClusterCount (partition);
+	}
 
 	// FAT clusters = POSIX blocks
 	buf->f_bsize = partition->bytesPerCluster;		// File system block size.
