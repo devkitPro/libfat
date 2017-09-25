@@ -90,10 +90,6 @@ const INTERFACE_ID _FAT_disc_interfaces[] = {
 #include <nds/memory.h>
 #include <nds/arm9/dldi.h>
 
-static const DISC_INTERFACE* get_io_dsisd (void) {
-	return (isDSiMode() && __NDSHeader->unitCode ) ? &__io_dsisd : NULL;
-}
-
 const INTERFACE_ID _FAT_disc_interfaces[] = {
 	{"sd",  get_io_dsisd},
 	{"fat", dldiGetInternal},
