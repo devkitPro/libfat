@@ -102,6 +102,14 @@ enum FSIB
 static const char FAT_SIG[3] = {'F', 'A', 'T'};
 static const char FS_INFO_SIG1[4] = {'R', 'R', 'a', 'A'};
 static const char FS_INFO_SIG2[4] = {'r', 'r', 'A', 'a'};
+static const char FS_TWL_SIG[8] = { 0xe9, 0x00, 0x00, 0x54, 0x57, 0x4c, 0x20, 0x20 };
+
+static bool isValidMBR(uint8_t *sectorBuffer) {
+	return (!memcmp(sectorBuffer + BPB_FAT16_fileSysType, FAT_SIG, sizeof(FAT_SIG)) ||
+			!memcmp(sectorBuffer + BPB_FAT32_fileSysType, FAT_SIG, sizeof(FAT_SIG)) ||
+			!memcmp(sectorBuffer, FS_TWL_SIG, sizeof(FS_TWL_SIG)));
+
+}
 
 sec_t FindFirstValidPartition_buf(const DISC_INTERFACE* disc, uint8_t *sectorBuffer)
 {
@@ -120,8 +128,8 @@ sec_t FindFirstValidPartition_buf(const DISC_INTERFACE* disc, uint8_t *sectorBuf
 	for(i=0;i<4;i++,ptr+=16) {
 		sec_t part_lba = u8array_to_u32(ptr, 0x8);
 
-		if (!memcmp(sectorBuffer + BPB_FAT16_fileSysType, FAT_SIG, sizeof(FAT_SIG)) ||
-			!memcmp(sectorBuffer + BPB_FAT32_fileSysType, FAT_SIG, sizeof(FAT_SIG))) {
+		if (isValidMBR(sectorBuffer))
+		{
 			return part_lba;
 		}
 
@@ -141,8 +149,7 @@ sec_t FindFirstValidPartition_buf(const DISC_INTERFACE* disc, uint8_t *sectorBuf
 
 				if(!_FAT_disc_readSectors (disc, part_lba2, 1, sectorBuffer)) return 0;
 
-				if (!memcmp(sectorBuffer + BPB_FAT16_fileSysType, FAT_SIG, sizeof(FAT_SIG)) ||
-					!memcmp(sectorBuffer + BPB_FAT32_fileSysType, FAT_SIG, sizeof(FAT_SIG)))
+				if (isValidMBR(sectorBuffer))
 				{
 					return part_lba2;
 				}
@@ -151,8 +158,10 @@ sec_t FindFirstValidPartition_buf(const DISC_INTERFACE* disc, uint8_t *sectorBuf
 			}
 		} else {
 			if(!_FAT_disc_readSectors (disc, part_lba, 1, sectorBuffer)) return 0;
-			if (!memcmp(sectorBuffer + BPB_FAT16_fileSysType, FAT_SIG, sizeof(FAT_SIG)) ||
-				!memcmp(sectorBuffer + BPB_FAT32_fileSysType, FAT_SIG, sizeof(FAT_SIG))) {
+
+
+			if (isValidMBR(sectorBuffer))
+			{
 				return part_lba;
 			}
 		}
@@ -199,9 +208,7 @@ PARTITION* _FAT_partition_constructor_buf (const DISC_INTERFACE* disc, uint32_t 
 		}
 	}
 
-	// Now verify that this is indeed a FAT partition
-	if (memcmp(sectorBuffer + BPB_FAT16_fileSysType, FAT_SIG, sizeof(FAT_SIG)) &&
-		memcmp(sectorBuffer + BPB_FAT32_fileSysType, FAT_SIG, sizeof(FAT_SIG)))
+	if (!isValidMBR(sectorBuffer))
 	{
 		return NULL;
 	}
