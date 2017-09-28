@@ -1,12 +1,12 @@
 ifeq ($(strip $(DEVKITPRO)),)
 $(error "Please set DEVKITPRO in your environment. export DEVKITPRO=<path to>devkitPro)
 endif
- 
+
 export TOPDIR	:=	$(CURDIR)
- 
+
 export LIBFAT_MAJOR	:= 1
 export LIBFAT_MINOR	:= 1
-export LIBFAT_PATCH	:= 1
+export LIBFAT_PATCH	:= 2
 
 export VERSTRING	:=	$(LIBFAT_MAJOR).$(LIBFAT_MINOR).$(LIBFAT_PATCH)
 
