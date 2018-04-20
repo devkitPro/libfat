@@ -46,6 +46,7 @@
 #include "lock.h"
 
 bool _FAT_findEntry(const char *path, DIR_ENTRY *dirEntry) {
+	bool r;
 	PARTITION *partition = _FAT_partition_getPartitionFromPath(path);
 
 	// Check Partition
@@ -61,8 +62,11 @@ bool _FAT_findEntry(const char *path, DIR_ENTRY *dirEntry) {
 	}
 
 	// Search for the file on the disc
-	return _FAT_directory_entryFromPath (partition, dirEntry, path, NULL);
+	_FAT_lock(&partition->lock);
+	r = _FAT_directory_entryFromPath (partition, dirEntry, path, NULL);
+	_FAT_unlock(&partition->lock);
 
+	return r;
 }
 
 int	FAT_getAttr(const char *file) {
@@ -92,16 +96,17 @@ int FAT_setAttr(const char *file, uint8_t attr) {
 	if (strchr (file, ':') != NULL)
 		return -1;
 
-	// Get DIR_ENTRY
-	if( !_FAT_directory_entryFromPath (partition, &dirEntry, file, NULL) )
-		return -1;
-
-	// Get Entry-End
-	entryEnd = dirEntry.dataEnd;
-
 	// Lock Partition
 	_FAT_lock(&partition->lock);
 
+	// Get DIR_ENTRY
+	if( !_FAT_directory_entryFromPath (partition, &dirEntry, file, NULL) ) {
+		_FAT_unlock(&partition->lock); // Unlock Partition
+		return -1;
+	}
+
+	// Get Entry-End
+	entryEnd = dirEntry.dataEnd;
 
 	// Write Data
 	_FAT_cache_writePartialSector (
