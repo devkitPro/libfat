@@ -106,9 +106,12 @@ dist-bin:
 	@tar --exclude=.svn --exclude=*CVS* -cvjf $(TOPDIR)/distribute/$(VERSTRING)/libfat-ogc-$(VERSTRING).tar.bz2 include lib
 
 install:
-	@cp lib/wii/libfat.a $(DEVKITPRO)/libogc/lib/wii
-	@cp lib/cube/libfat.a $(DEVKITPRO)/libogc/lib/cube
-	@cp $(TOPDIR)/include/fat.h $(TOPDIR)/include/libfatversion.h $(DEVKITPRO)/libogc/include
+	@mkdir -p $(DESTDIR)$(DEVKITPRO)/libogc/lib/cube
+	@mkdir -p $(DESTDIR)$(DEVKITPRO)/libogc/lib/wii
+	@mkdir -p $(DESTDIR)$(DEVKITPRO)/libogc/include
+	@cp lib/wii/libfat.a $(DESTDIR)$(DEVKITPRO)/libogc/lib/wii
+	@cp lib/cube/libfat.a $(DESTDIR)$(DEVKITPRO)/libogc/lib/cube
+	@cp $(TOPDIR)/include/fat.h $(TOPDIR)/include/libfatversion.h $(DESTDIR)$(DEVKITPRO)/libogc/include
 
 #---------------------------------------------------------------------------------
 else

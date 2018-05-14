@@ -126,8 +126,10 @@ dist-bin:
 	@tar --exclude=.svn --exclude=*CVS* -cvjf $(TOPDIR)/distribute/$(VERSTRING)/libfat-gba-$(VERSTRING).tar.bz2 include lib
 	
 install:
-	@cp lib/libfat.a $(DEVKITPRO)/libgba/lib
-	@cp $(TOPDIR)/include/fat.h $(TOPDIR)/include/libfatversion.h $(DEVKITPRO)/libgba/include
+	@mkdir -p $(DESTDIR)$(DEVKITPRO)/libgba/lib
+	@mkdir -p $(DESTDIR)$(DEVKITPRO)/libgba/include
+	@cp lib/libfat.a $(DESTDIR)$(DEVKITPRO)/libgba/lib
+	@cp $(TOPDIR)/include/fat.h $(TOPDIR)/include/libfatversion.h $(DESTDIR)$(DEVKITPRO)/libgba/include
  
 #---------------------------------------------------------------------------------
 else
