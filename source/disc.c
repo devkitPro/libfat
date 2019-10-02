@@ -85,8 +85,8 @@ static const DISC_INTERFACE* get_io_gcsda (void) {
 
 const INTERFACE_ID _FAT_disc_interfaces[] = {
 	{"sd", get_io_gcsd2},
-	{"cardb", get_io_gcsdb},
 	{"carda", get_io_gcsda},
+	{"cardb", get_io_gcsdb},
 	{NULL, NULL}
 };	
 
