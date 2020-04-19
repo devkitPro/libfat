@@ -129,7 +129,7 @@ install:
 	@mkdir -p $(DESTDIR)$(DEVKITPRO)/orcus/lib
 	@mkdir -p $(DESTDIR)$(DEVKITPRO)/orcus/include
 	@cp lib/libfat.a $(DESTDIR)$(DEVKITPRO)/orcus/lib
-	@cp $(TOPDIR)/include/fat.h $(TOPDIR)/include/libfatversion.h $(DESTDIR)$(DEVKITPRO)/liborcus/include
+	@cp $(TOPDIR)/include/fat.h $(TOPDIR)/include/libfatversion.h $(DESTDIR)$(DEVKITPRO)/orcus/include
  
 #---------------------------------------------------------------------------------
 else

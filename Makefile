@@ -119,4 +119,4 @@ ogc-install: cube-release wii-release
 	$(MAKE) -C libogc install
 
 gp2x-install: gp2x-release
-	$(MAKE) -C libogc install
+	$(MAKE) -C gp2x install
