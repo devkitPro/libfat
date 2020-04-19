@@ -86,7 +86,7 @@ int _FAT_link_r (struct _reent *r, const char *existing, const char *newLink) {
 	return -1;
 }
 
-int _FAT_unlink_r (struct _reent *r, const char *path) {
+static int _FAT_unlinkCommon (struct _reent *r, const char *path, bool isRmDir) {
 	PARTITION* partition = NULL;
 	DIR_ENTRY dirEntry;
 	DIR_ENTRY dirContents;
@@ -130,6 +130,12 @@ int _FAT_unlink_r (struct _reent *r, const char *path) {
 
 	// If this is a directory, make sure it is empty
 	if (_FAT_directory_isDirectory (&dirEntry)) {
+		if (!isRmDir) {
+			_FAT_unlock(&partition->lock);
+			r->_errno = EISDIR;
+			return -1;
+		}
+
 		nextEntry = _FAT_directory_getFirstEntry (partition, &dirContents, cluster);
 
 		while (nextEntry) {
@@ -141,6 +147,10 @@ int _FAT_unlink_r (struct _reent *r, const char *path) {
 			}
 			nextEntry = _FAT_directory_getNextEntry (partition, &dirContents);
 		}
+	} else if (isRmDir) {
+		_FAT_unlock(&partition->lock);
+		r->_errno = ENOTDIR;
+		return -1;
 	}
 
 	if (_FAT_fat_isValidCluster(partition, cluster)) {
@@ -169,6 +179,10 @@ int _FAT_unlink_r (struct _reent *r, const char *path) {
 	} else {
 		return 0;
 	}
+}
+
+int _FAT_unlink_r (struct _reent *r, const char *path) {
+	return _FAT_unlinkCommon (r, path, false);
 }
 
 int _FAT_chdir_r (struct _reent *r, const char *path) {
@@ -449,6 +463,10 @@ int _FAT_mkdir_r (struct _reent *r, const char *path, int mode) {
 
 	_FAT_unlock(&partition->lock);
 	return 0;
+}
+
+int _FAT_rmdir_r (struct _reent *r, const char *path) {
+	return _FAT_unlinkCommon (r, path, true);
 }
 
 int _FAT_statvfs_r (struct _reent *r, const char *path, struct statvfs *buf)

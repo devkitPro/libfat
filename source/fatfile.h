@@ -85,8 +85,6 @@ int _FAT_stat_r (struct _reent *r, const char *path, struct stat *st);
 
 int _FAT_link_r (struct _reent *r, const char *existing, const char *newLink);
 
-int _FAT_unlink_r (struct _reent *r, const char *name);
-
 int _FAT_chdir_r (struct _reent *r, const char *name);
 
 int _FAT_rename_r (struct _reent *r, const char *oldName, const char *newName);
