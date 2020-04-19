@@ -59,6 +59,8 @@ extern int _FAT_rename_r (struct _reent *r, const char *oldName, const char *new
 
 extern int _FAT_mkdir_r (struct _reent *r, const char *path, int mode);
 
+extern int _FAT_rmdir_r (struct _reent *r, const char *path);
+
 extern int _FAT_statvfs_r (struct _reent *r, const char *path, struct statvfs *buf);
 
 /*
