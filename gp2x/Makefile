@@ -116,7 +116,7 @@ $(BUILD):
 #---------------------------------------------------------------------------------
 clean:
 	@echo clean ...
-	@rm -fr debug release $(LIB) include
+	@rm -fr debug gp2x_release $(LIB) include
 
 all: $(GP2XBIN)
 
@@ -126,10 +126,10 @@ dist-bin:
 	@tar --exclude=.svn --exclude=*CVS* -cvjf $(TOPDIR)/distribute/$(VERSTRING)/libfat-gp2x-$(VERSTRING).tar.bz2 include lib
 	
 install:
-	@mkdir -p $(DESTDIR)$(DEVKITPRO)/orcus/lib
-	@mkdir -p $(DESTDIR)$(DEVKITPRO)/orcus/include
-	@cp lib/libfat.a $(DESTDIR)$(DEVKITPRO)/orcus/lib
-	@cp $(TOPDIR)/include/fat.h $(TOPDIR)/include/libfatversion.h $(DESTDIR)$(DEVKITPRO)/orcus/include
+	@mkdir -p $(DESTDIR)$(DEVKITPRO)/liborcus/lib
+	@mkdir -p $(DESTDIR)$(DEVKITPRO)/liborcus/include
+	@cp lib/libfat.a $(DESTDIR)$(DEVKITPRO)/liborcus/lib
+	@cp $(TOPDIR)/include/fat.h $(TOPDIR)/include/libfatversion.h $(DESTDIR)$(DEVKITPRO)/liborcus/include
  
 #---------------------------------------------------------------------------------
 else
