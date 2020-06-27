@@ -51,7 +51,7 @@ cube-debug: include/libfatversion.h
 wii-debug: include/libfatversion.h
 	$(MAKE) -C libogc PLATFORM=wii BUILD=cube_debug
 
-gba-debug: include/libfatversion.h
+gp2x-debug: include/libfatversion.h
 	$(MAKE) -C gp2x BUILD=debug
 
 clean: nds-clean gba-clean ogc-clean gp2x-clean
