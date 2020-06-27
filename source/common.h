@@ -52,6 +52,9 @@
 #elif defined(GBA)
    #include <gba_types.h>
    #include <disc_io.h>
+#elif defined(GP2X)
+  #include <gp2xtypes.h>
+  #include <disc_io.h>
 #endif
 
 // Platform specific options
@@ -73,6 +76,9 @@
    #define DEFAULT_CACHE_PAGES 2
    #define DEFAULT_SECTORS_PAGE 8
    #define LIMIT_SECTORS 128
+#elif defined (GP2X)
+  #define DEFAULT_CACHE_PAGES 16
+  #define DEFAULT_SECTORS_PAGE 8
 #endif
 
 #endif // _COMMON_H

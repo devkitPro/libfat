@@ -111,5 +111,15 @@ const INTERFACE_ID _FAT_disc_interfaces[] = {
 	{NULL, NULL}
 };	
 
+/* ====================== GP2X ====================== */
+#elif defined (GP2X)
+#include <disc_io.h>
+
+const INTERFACE_ID _FAT_disc_interfaces[] = {
+	{"sd",  get_io_gp2xsd},
+	{NULL, NULL}
+				     
+};
+
 #endif
 
