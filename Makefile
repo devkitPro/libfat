@@ -5,8 +5,8 @@ endif
 export TOPDIR	:=	$(CURDIR)
 
 export LIBFAT_MAJOR	:= 1
-export LIBFAT_MINOR	:= 1
-export LIBFAT_PATCH	:= 5
+export LIBFAT_MINOR	:= 2
+export LIBFAT_PATCH	:= 0
 
 export VERSTRING	:=	$(LIBFAT_MAJOR).$(LIBFAT_MINOR).$(LIBFAT_PATCH)
 
