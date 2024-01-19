@@ -338,6 +338,7 @@ int _FAT_mkdir_r (struct _reent *r, const char *path, int mode) {
 	bool fileExists;
 	DIR_ENTRY dirEntry;
 	const char* pathEnd;
+	const char* trailingSlash;
 	uint32_t parentCluster, dirCluster;
 	uint8_t newEntryData[DIR_ENTRY_DATA_SIZE];
 
@@ -376,8 +377,12 @@ int _FAT_mkdir_r (struct _reent *r, const char *path, int mode) {
 	}
 
 	// Get the directory it has to go in
-	pathEnd = strrchr (path, DIR_SEPARATOR);
-	if (pathEnd == NULL) {
+	pathEnd = path + strlen (path) - 1;
+	trailingSlash = *pathEnd == DIR_SEPARATOR ? pathEnd : NULL;
+	if (trailingSlash) pathEnd--;
+	while (pathEnd > path && *pathEnd != DIR_SEPARATOR)
+		--pathEnd;
+	if (pathEnd == path) {
 		// No path was specified
 		parentCluster = partition->cwdCluster;
 		pathEnd = path;
@@ -396,6 +401,10 @@ int _FAT_mkdir_r (struct _reent *r, const char *path, int mode) {
 	}
 	// Create the entry data
 	strncpy (dirEntry.filename, pathEnd, NAME_MAX - 1);
+	if (trailingSlash) {
+		// Remove the trailing slash
+		dirEntry.filename[trailingSlash - pathEnd] = '\0';
+	}
 	memset (dirEntry.entryData, 0, DIR_ENTRY_DATA_SIZE);
 
 	// Set the creation time and date
