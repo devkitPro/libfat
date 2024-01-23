@@ -67,6 +67,7 @@ static const devoptab_t dotab_fat = {
 	NULL,	// chmod_r
 	NULL,	// fchmod_r
 	_FAT_rmdir_r,
+	_FAT_stat_r, // This is lstat, but we don't support symlinks
 };
 
 bool fatMount (const char* name, const DISC_INTERFACE* interface, sec_t startSector, uint32_t cacheSize, uint32_t SectorsPerPage) {
