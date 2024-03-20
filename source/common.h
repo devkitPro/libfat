@@ -33,23 +33,16 @@
 #include <stddef.h>
 #include <stdint.h>
 
-// When compiling for NDS, make sure NDS is defined
-#ifndef NDS
- #if defined ARM9 || defined ARM7
-  #define NDS
- #endif
-#endif
-
 // Platform specific includes
 #if defined(__gamecube__) || defined (__wii__)
    #include <gctypes.h>
    #include <ogc/disc_io.h>
    #include <gccore.h>
-#elif defined(NDS)
+#elif defined(__NDS__)
    #include <nds/ndstypes.h>
    #include <nds/system.h>
    #include <nds/disc_io.h>
-#elif defined(GBA)
+#elif defined(__GBA__)
    #include <gba_types.h>
    #include <disc_io.h>
 #elif defined(GP2X)
@@ -68,11 +61,11 @@
    #define DEFAULT_SECTORS_PAGE 64
    #define USE_LWP_LOCK
    #define USE_RTC_TIME
-#elif defined (NDS)
+#elif defined (__NDS__)
    #define DEFAULT_CACHE_PAGES 16
    #define DEFAULT_SECTORS_PAGE 8
    #define USE_RTC_TIME
-#elif defined (GBA)
+#elif defined (__GBA__)
    #define DEFAULT_CACHE_PAGES 2
    #define DEFAULT_SECTORS_PAGE 8
    #define LIMIT_SECTORS 128

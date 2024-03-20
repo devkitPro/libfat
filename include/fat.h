@@ -38,10 +38,10 @@ extern "C" {
 
 #include "libfatversion.h"
 
-// When compiling for NDS, make sure NDS is defined
-#ifndef NDS
- #if defined ARM9 || defined ARM7
-  #define NDS
+// When compiling for NDS, make sure __NDS__ is defined, as old Makefiles don't define it
+#if !defined __NDS__ && !defined __GBA__
+ #if defined NDS || defined ARM9 || defined ARM7
+  #define __NDS__
  #endif
 #endif
 
@@ -50,7 +50,7 @@ extern "C" {
 #if defined(__gamecube__) || defined (__wii__)
 #  include <ogc/disc_io.h>
 #else
-#  ifdef NDS
+#  ifdef __NDS__
 #    include <nds/disc_io.h>
 #  else
 #    include <disc_io.h>
