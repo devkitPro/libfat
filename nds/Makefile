@@ -32,7 +32,7 @@ CFLAGS	:=	-g -Wall -O2 \
 		-ffast-math \
 		$(ARCH)
 
-CFLAGS	+=	$(INCLUDE) -DARM9 -DNDS
+CFLAGS	+=	$(INCLUDE) -DARM9 -D__NDS__
 CXXFLAGS	:=	$(CFLAGS)
 
 ASFLAGS	:=	-g $(ARCH)

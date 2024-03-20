@@ -91,7 +91,7 @@ const INTERFACE_ID _FAT_disc_interfaces[] = {
 };	
 
 /* ====================== NDS ====================== */
-#elif defined (NDS)
+#elif defined (__NDS__)
 #include <nds/system.h>
 #include <nds/memory.h>
 #include <nds/arm9/dldi.h>
@@ -103,7 +103,7 @@ const INTERFACE_ID _FAT_disc_interfaces[] = {
 };	
 
 /* ====================== GBA ====================== */
-#elif defined (GBA)
+#elif defined (__GBA__)
 #include <disc.h>
 
 const INTERFACE_ID _FAT_disc_interfaces[] = {
